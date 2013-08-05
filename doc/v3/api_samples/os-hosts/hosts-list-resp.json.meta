@@ -1,0 +1,10 @@
+{
+    "description": "Lists all hosts.", 
+    "extension": "os-hosts", 
+    "extension_description": "Manages physical hosts.", 
+    "method": "GET", 
+    "response": "hosts-list-resp.json", 
+    "section_name": "Hosts", 
+    "status": 200, 
+    "url": "os-hosts"
+}
