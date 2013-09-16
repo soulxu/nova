@@ -1,0 +1,10 @@
+{
+    "description": "Shuts down a host.", 
+    "extension": "os-hosts", 
+    "extension_description": "Manages physical hosts.", 
+    "method": "GET", 
+    "response": "host-get-shutdown.xml", 
+    "section_name": "Hosts", 
+    "status": 200, 
+    "url": "os-hosts/{host_name}/shutdown"
+}
