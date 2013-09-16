@@ -1,0 +1,10 @@
+{
+    "description": "Return all migrations in progress.", 
+    "extension": "os-migrations", 
+    "extension_description": "Provide data on migrations.", 
+    "method": "GET", 
+    "response": "migrations-get.json", 
+    "section_name": "Migrations", 
+    "status": 200, 
+    "url": "os-migrations"
+}
