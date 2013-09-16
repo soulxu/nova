@@ -1,0 +1,11 @@
+{
+    "description": "Updates an agent build", 
+    "extension": "os-agents", 
+    "extension_description": "Creates, updates, and deletes guest agents. Use guest agents to access files on the disk, configure networking, or run other applications or scripts in the guest while it runs. This hypervisor-specific extension is not currently enabled for KVM. Use of guest agents is possible only if the underlying service provider uses the Xen driver. ", 
+    "method": "PUT", 
+    "request": "agent-update-put-req.xml", 
+    "response": "agent-update-put-resp.xml", 
+    "section_name": "Guest Agents", 
+    "status": 200, 
+    "url": "os-agents/{id}"
+}
