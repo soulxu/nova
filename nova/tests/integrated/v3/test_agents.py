@@ -21,6 +21,14 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class AgentsJsonTest(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "os-agents"
+    section_name = "Guest Agents"
+    section_doc = ("Creates, updates, and deletes guest agents. Use guest "
+                   "agents to access files on the disk, configure networking, "
+                   "or run other applications or scripts in the guest while "
+                   "it runs. This hypervisor-specific extension is not "
+                   "currently enabled for KVM. Use of guest agents is "
+                   "possible only if the underlying service provider "
+                   "uses the Xen driver. ")
 
     def setUp(self):
         super(AgentsJsonTest, self).setUp()
@@ -73,15 +81,17 @@ class AgentsJsonTest(api_sample_base.ApiSampleTestBaseV3):
                 'version': '8.0',
                 'md5hash': 'add6bb58e139be103324d04d82d8f545'
                 }
-        response = self._do_post('os-agents', 'agent-post-req',
-                                 project)
+        response = self._doc_do_post('os-agents', (), (), 'agent-post-req',
+                                     project,
+                                     api_desc='Creates an agent build')
         project['agent_id'] = 1
         self._verify_response('agent-post-resp', project, response, 201)
         return project
 
     def test_agent_list(self):
         # Return a list of all agent builds.
-        response = self._do_get('os-agents')
+        response = self._doc_do_get('os-agents', (), (),
+                                    api_desc='Lists all agent builds')
         project = {'url': 'xxxxxxxxxxxx',
                 'hypervisor': 'hypervisor',
                 'architecture': 'x86',
@@ -98,15 +108,19 @@ class AgentsJsonTest(api_sample_base.ApiSampleTestBaseV3):
         subs = {'version': '7.0',
                 'url': 'xxx://xxxx/xxx/xxx',
                 'md5hash': 'add6bb58e139be103324d04d82d8f545'}
-        response = self._do_put('os-agents/%s' % agent_id,
-                                'agent-update-put-req', subs)
+        response = self._doc_do_put('os-agents/%s', agent_id, 'id',
+                                    'agent-update-put-req', subs,
+                                    api_desc='Updates an agent build')
         subs['agent_id'] = 1
         self._verify_response('agent-update-put-resp', subs, response, 200)
 
     def test_agent_delete(self):
         # Deletes an existing agent build.
         agent_id = 1
-        response = self._do_delete('os-agents/%s' % agent_id)
+        response = self._doc_do_delete(
+            'os-agents/%s', agent_id, 'id',
+            api_desc='Deletes an existing agent build')
+        self._verify_delete_response('agent-delete', response, 204)
         self.assertEqual(response.status, 204)
 
 
