@@ -1,0 +1,11 @@
+{
+    "description": "Creates an aggregate, given its name and availability_zone.", 
+    "extension": "os-aggregates", 
+    "extension_description": "Admin-only aggregate administration.", 
+    "method": "POST", 
+    "request": "aggregate-post-req.json", 
+    "response": "aggregate-post-resp.json", 
+    "section_name": "Aggregates", 
+    "status": 201, 
+    "url": "os-aggregates"
+}
