@@ -1,0 +1,11 @@
+{
+    "description": "Shows the details of an aggregate, hosts and metadata included.", 
+    "extension": "os-aggregates", 
+    "extension_description": "Admin-only aggregate administration.", 
+    "method": "GET", 
+    "request": "aggregate-post-req.xml", 
+    "response": "aggregates-get-resp.xml", 
+    "section_name": "Aggregates", 
+    "status": 200, 
+    "url": "os-aggregates/{aggregate_id}"
+}
