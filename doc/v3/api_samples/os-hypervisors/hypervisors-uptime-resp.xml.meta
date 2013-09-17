@@ -1,0 +1,10 @@
+{
+    "description": "Shows the uptime for specific hypervisor.", 
+    "extension": "os-hypervisors", 
+    "extension_description": "Admin-only hypervisor administration.", 
+    "method": "GET", 
+    "response": "hypervisors-uptime-resp.xml", 
+    "section_name": "Hypervisors", 
+    "status": 200, 
+    "url": "os-hypervisors/{hypervisor_id}/uptime"
+}

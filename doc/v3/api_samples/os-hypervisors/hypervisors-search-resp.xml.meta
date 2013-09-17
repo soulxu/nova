@@ -1,0 +1,10 @@
+{
+    "description": "Search hypervisors by the host name", 
+    "extension": "os-hypervisors", 
+    "extension_description": "Admin-only hypervisor administration.", 
+    "method": "GET", 
+    "response": "hypervisors-search-resp.xml", 
+    "section_name": "Hypervisors", 
+    "status": 200, 
+    "url": "os-hypervisors/search?query={filter}"
+}

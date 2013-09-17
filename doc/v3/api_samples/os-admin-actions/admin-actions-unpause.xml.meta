@@ -1,0 +1,10 @@
+{
+    "description": "Permit Admins to unpause the server.", 
+    "extension": "os-admin-actions", 
+    "extension_description": "Enable admin-only server actions.\n    Actions include: pause, unpause, suspend, resume, migrate,\n    reset_network, inject_network_info, lock, unlock, create_backup\n    ", 
+    "method": "POST", 
+    "request": "admin-actions-unpause.xml", 
+    "section_name": "Admin Actions", 
+    "status": 202, 
+    "url": "servers/{server_id}/action"
+}
