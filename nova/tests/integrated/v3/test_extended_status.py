@@ -19,17 +19,23 @@ from nova.tests.integrated.v3 import test_servers
 
 class ExtendedStatusSampleJsonTests(test_servers.ServersSampleBase):
     extension_name = "os-extended-status"
+    section_name = 'Extended Status'
+    section_doc = "Extended Status support."
 
     def test_show(self):
         uuid = self._post_server()
-        response = self._do_get('servers/%s' % uuid)
+        response = self._doc_do_get(
+            'servers/%s', uuid, 'server_id',
+            api_desc="Returns server details by server id.")
         subs = self._get_regexes()
         subs['hostid'] = '[a-f0-9]+'
         self._verify_response('server-get-resp', subs, response, 200)
 
     def test_detail(self):
         uuid = self._post_server()
-        response = self._do_get('servers/detail')
+        response = self._doc_do_get(
+            'servers/detail', (), (),
+            api_desc="Returns a list of server details for a given user.")
         subs = self._get_regexes()
         subs['id'] = uuid
         subs['hostid'] = '[a-f0-9]+'

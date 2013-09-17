@@ -1,0 +1,11 @@
+{
+    "description": "Adds a host to the specified aggregate.", 
+    "extension": "os-aggregates", 
+    "extension_description": "Admin-only aggregate administration.", 
+    "method": "POST", 
+    "request": "aggregate-add-host-post-req.xml", 
+    "response": "aggregates-add-host-post-resp.xml", 
+    "section_name": "Aggregates", 
+    "status": 202, 
+    "url": "os-aggregates/{aggregate_id}/action"
+}

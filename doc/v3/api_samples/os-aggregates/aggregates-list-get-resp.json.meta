@@ -1,0 +1,11 @@
+{
+    "description": "Returns a list a host aggregate's id, name, availability_zone.", 
+    "extension": "os-aggregates", 
+    "extension_description": "Admin-only aggregate administration.", 
+    "method": "GET", 
+    "request": "aggregate-post-req.json", 
+    "response": "aggregates-list-get-resp.json", 
+    "section_name": "Aggregates", 
+    "status": 200, 
+    "url": "os-aggregates"
+}

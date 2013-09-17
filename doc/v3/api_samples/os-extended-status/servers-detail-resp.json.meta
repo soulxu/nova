@@ -1,0 +1,10 @@
+{
+    "description": "Returns a list of server details for a given user.", 
+    "extension": "os-extended-status", 
+    "extension_description": "Extended Status support.", 
+    "method": "GET", 
+    "response": "servers-detail-resp.json", 
+    "section_name": "Extended Status", 
+    "status": 200, 
+    "url": "servers/detail"
+}

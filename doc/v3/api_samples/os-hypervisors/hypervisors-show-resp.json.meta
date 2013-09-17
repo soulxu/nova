@@ -1,0 +1,10 @@
+{
+    "description": "Shows the detail of hypervisor.", 
+    "extension": "os-hypervisors", 
+    "extension_description": "Admin-only hypervisor administration.", 
+    "method": "GET", 
+    "response": "hypervisors-show-resp.json", 
+    "section_name": "Hypervisors", 
+    "status": 200, 
+    "url": "os-hypervisors/{hypervisor_id}"
+}

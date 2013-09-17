@@ -1,0 +1,10 @@
+{
+    "description": "Shows the statistics for hypervisors.", 
+    "extension": "os-hypervisors", 
+    "extension_description": "Admin-only hypervisor administration.", 
+    "method": "GET", 
+    "response": "hypervisors-statistics-resp.json", 
+    "section_name": "Hypervisors", 
+    "status": 200, 
+    "url": "os-hypervisors/statistics"
+}
