@@ -1,0 +1,10 @@
+{
+    "description": "Lists servers that run on the specific hypervisor.", 
+    "extension": "os-hypervisors", 
+    "extension_description": "Admin-only hypervisor administration.", 
+    "method": "GET", 
+    "response": "hypervisors-servers-resp.xml", 
+    "section_name": "Hypervisors", 
+    "status": 200, 
+    "url": "os-hypervisors/{hypervisor_id}/servers"
+}

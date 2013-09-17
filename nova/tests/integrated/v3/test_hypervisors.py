@@ -20,17 +20,24 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class HypervisorsSampleJsonTests(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "os-hypervisors"
+    section_name = 'Hypervisors'
+    section_doc = 'Admin-only hypervisor administration.'
 
     def test_hypervisors_list(self):
-        response = self._do_get('os-hypervisors')
+        response = self._doc_do_get('os-hypervisors', (), (),
+                                    api_desc='Lists all hypervisors.')
         self._verify_response('hypervisors-list-resp', {}, response, 200)
 
     def test_hypervisors_search(self):
-        response = self._do_get('os-hypervisors/search?query=fake')
+        response = self._doc_do_get(
+            'os-hypervisors/search?query=%s', 'fake', 'filter',
+            api_desc="Search hypervisors by the host name")
         self._verify_response('hypervisors-search-resp', {}, response, 200)
 
     def test_hypervisors_servers(self):
-        response = self._do_get('os-hypervisors/1/servers')
+        response = self._doc_do_get(
+            'os-hypervisors/%s/servers', 1, 'hypervisor_id',
+            api_desc='Lists servers that run on the specific hypervisor.')
         self._verify_response('hypervisors-servers-resp', {}, response, 200)
 
     def test_hypervisors_detail(self):
@@ -47,12 +54,16 @@ class HypervisorsSampleJsonTests(api_sample_base.ApiSampleTestBaseV3):
         subs = {
             'hypervisor_id': hypervisor_id
         }
-        response = self._do_get('os-hypervisors/%s' % hypervisor_id)
+        response = self._doc_do_get(
+            'os-hypervisors/%s', hypervisor_id, 'hypervisor_id',
+            api_desc='Shows the detail of hypervisor.')
         subs.update(self._get_regexes())
         self._verify_response('hypervisors-show-resp', subs, response, 200)
 
     def test_hypervisors_statistics(self):
-        response = self._do_get('os-hypervisors/statistics')
+        response = self._doc_do_get(
+            'os-hypervisors/statistics', (), (),
+            api_desc='Shows the statistics for hypervisors.')
         self._verify_response('hypervisors-statistics-resp', {}, response, 200)
 
     def test_hypervisors_uptime(self):
@@ -63,7 +74,9 @@ class HypervisorsSampleJsonTests(api_sample_base.ApiSampleTestBaseV3):
         self.stubs.Set(compute_api.HostAPI,
                        'get_host_uptime', fake_get_host_uptime)
         hypervisor_id = 1
-        response = self._do_get('os-hypervisors/%s/uptime' % hypervisor_id)
+        response = self._doc_do_get(
+            'os-hypervisors/%s/uptime', hypervisor_id, 'hypervisor_id',
+            api_desc='Shows the uptime for specific hypervisor.')
         subs = {
             'hypervisor_id': hypervisor_id,
         }

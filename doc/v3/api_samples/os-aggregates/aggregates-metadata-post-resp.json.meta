@@ -1,0 +1,11 @@
+{
+    "description": "Add new metadata and replaces the aggregate's existing metadata with new metadata.", 
+    "extension": "os-aggregates", 
+    "extension_description": "Admin-only aggregate administration.", 
+    "method": "POST", 
+    "request": "aggregate-metadata-post-req.json", 
+    "response": "aggregates-metadata-post-resp.json", 
+    "section_name": "Aggregates", 
+    "status": 200, 
+    "url": "os-aggregates/{aggregate_id}/action"
+}
