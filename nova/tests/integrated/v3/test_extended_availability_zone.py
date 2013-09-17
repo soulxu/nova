@@ -19,17 +19,23 @@ from nova.tests.integrated.v3 import test_servers
 
 class ExtendedAvailabilityZoneJsonTests(test_servers.ServersSampleBase):
     extension_name = "os-extended-availability-zone"
+    section_name = 'Extended Availability Zone'
+    section_doc = "Extended Server Attributes support."
 
     def test_show(self):
         uuid = self._post_server()
-        response = self._do_get('servers/%s' % uuid)
+        response = self._doc_do_get(
+            'servers/%s', uuid, 'server_id',
+            api_desc="Returns server details by server id.")
         subs = self._get_regexes()
         subs['hostid'] = '[a-f0-9]+'
         self._verify_response('server-get-resp', subs, response, 200)
 
     def test_detail(self):
         self._post_server()
-        response = self._do_get('servers/detail')
+        response = self._doc_do_get(
+            'servers/detail', (), (),
+            api_desc="Returns a list of server details for a given user.")
         subs = self._get_regexes()
         subs['hostid'] = '[a-f0-9]+'
         self._verify_response('servers-detail-resp', subs, response, 200)

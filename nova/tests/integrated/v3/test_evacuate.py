@@ -22,6 +22,8 @@ from nova.tests.integrated.v3 import test_servers
 
 class EvacuateJsonTest(test_servers.ServersSampleBase):
     extension_name = "os-evacuate"
+    section_name = 'Evacuate'
+    section_doc = "Enables server evacuation."
 
     def test_server_evacuate(self):
         uuid = self._post_server()
@@ -56,8 +58,11 @@ class EvacuateJsonTest(test_servers.ServersSampleBase):
                        '_check_instance_exists',
                        fake_check_instance_exists)
 
-        response = self._do_post('servers/%s/action' % uuid,
-                                 'server-evacuate-req', req_subs)
+        response = self._doc_do_post(
+            'servers/%s/action', uuid, 'server_id',
+            'server-evacuate-req', req_subs,
+            api_desc="Permit admins to evacuate a server from a failed host "
+                     "to a new one.")
         subs = self._get_regexes()
         self._verify_response('server-evacuate-resp', subs, response, 200)
 

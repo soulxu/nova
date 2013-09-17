@@ -1,0 +1,11 @@
+{
+    "description": "Permit admins to evacuate a server from a failed host to a new one.", 
+    "extension": "os-evacuate", 
+    "extension_description": "Enables server evacuation.", 
+    "method": "POST", 
+    "request": "server-evacuate-req.json", 
+    "response": "server-evacuate-resp.json", 
+    "section_name": "Evacuate", 
+    "status": 200, 
+    "url": "servers/{server_id}/action"
+}

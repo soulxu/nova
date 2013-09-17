@@ -1,0 +1,10 @@
+{
+    "description": "Returns server details by server id.", 
+    "extension": "os-extended-server-attributes", 
+    "extension_description": "Extended Server Attributes support.", 
+    "method": "GET", 
+    "response": "server-get-resp.json", 
+    "section_name": "Extended Server Attributes", 
+    "status": 200, 
+    "url": "servers/{server_id}"
+}
