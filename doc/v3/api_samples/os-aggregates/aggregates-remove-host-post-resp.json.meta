@@ -1,0 +1,11 @@
+{
+    "description": "Removes a host from the specified aggregate.", 
+    "extension": "os-aggregates", 
+    "extension_description": "Admin-only aggregate administration.", 
+    "method": "POST", 
+    "request": "aggregate-remove-host-post-req.json", 
+    "response": "aggregates-remove-host-post-resp.json", 
+    "section_name": "Aggregates", 
+    "status": 202, 
+    "url": "os-aggregates/{aggregate_id}/action"
+}
