@@ -1,0 +1,10 @@
+{
+    "description": "Returns server details by server id.", 
+    "extension": "os-extended-availability-zone", 
+    "extension_description": "Extended Server Attributes support.", 
+    "method": "GET", 
+    "response": "server-get-resp.xml", 
+    "section_name": "Extended Availability Zone", 
+    "status": 200, 
+    "url": "servers/{server_id}"
+}

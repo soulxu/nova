@@ -1,0 +1,10 @@
+{
+    "description": "Returns a list of server details for a given user.", 
+    "extension": "os-extended-availability-zone", 
+    "extension_description": "Extended Server Attributes support.", 
+    "method": "GET", 
+    "response": "servers-detail-resp.xml", 
+    "section_name": "Extended Availability Zone", 
+    "status": 200, 
+    "url": "servers/detail"
+}
