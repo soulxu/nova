@@ -22,6 +22,8 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class MigrationsSamplesJsonTest(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "os-migrations"
+    section_name = "Migrations"
+    section_doc = "Provide data on migrations."
 
     def _stub_migrations(self, context, filters):
         fake_migrations = [
@@ -62,7 +64,9 @@ class MigrationsSamplesJsonTest(api_sample_base.ApiSampleTestBaseV3):
                        self._stub_migrations)
 
     def test_get_migrations(self):
-        response = self._do_get('os-migrations')
+        response = self._doc_do_get(
+            'os-migrations', (), (),
+            api_desc="Return all migrations in progress.")
         subs = self._get_regexes()
 
         self.assertEqual(response.status, 200)
