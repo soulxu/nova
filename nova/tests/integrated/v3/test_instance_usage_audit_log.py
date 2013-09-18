@@ -21,17 +21,23 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class InstanceUsageAuditLogJsonTest(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "os-instance-usage-audit-log"
+    section_name = 'Instance Usage Audit Log'
+    section_doc = "Admin-only Task Log Monitoring."
 
     def test_index_instance_usage_audit_log(self):
-        response = self._do_get('os-instance-usage-audit-log')
+        response = self._doc_do_get('os-instance-usage-audit-log', (), (),
+                                    api_desc='Lists the instance usage audits.')
         subs = self._get_regexes()
         subs['hostid'] = '[a-f0-9]+'
         self._verify_response('inst-usage-audit-log-index-get-resp',
                               subs, response, 200)
 
     def test_index_instance_usage_audit_log_with_before(self):
-        response = self._do_get('os-instance-usage-audit-log?before=%s' %
-                                urllib.quote('2012-07-05 10:00:00'))
+        response = self._doc_do_get(
+            'os-instance-usage-audit-log?before=%s',
+            urllib.quote('2012-07-05 10:00:00'),
+            'datetime',
+            api_desc='Lists the instance usage audits before specific time')
         subs = self._get_regexes()
         subs['hostid'] = '[a-f0-9]+'
         self._verify_response(

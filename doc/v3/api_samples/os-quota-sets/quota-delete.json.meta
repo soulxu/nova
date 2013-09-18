@@ -1,0 +1,9 @@
+{
+    "description": "Deletes quota for user.", 
+    "extension": "os-quota-sets", 
+    "extension_description": "Quotas management support.", 
+    "method": "DELETE", 
+    "section_name": "Quota Sets", 
+    "status": 204, 
+    "url": "os-quota-sets/{tenant_id}"
+}
