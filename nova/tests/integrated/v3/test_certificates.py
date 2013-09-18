@@ -19,15 +19,19 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class CertificatesSamplesJsonTest(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "os-certificates"
+    section_name = "Certificates"
+    section_doc = "Certificates support."
 
     def test_create_certificates(self):
-        response = self._do_post('os-certificates',
-                                 'certificate-create-req', {})
+        response = self._doc_do_post('os-certificates', (), (),
+                                     'certificate-create-req', {},
+                                     api_desc="Create a certificate.")
         subs = self._get_regexes()
         self._verify_response('certificate-create-resp', subs, response, 201)
 
     def test_get_root_certificate(self):
-        response = self._do_get('os-certificates/root')
+        response = self._doc_do_get('os-certificates/root', (), (),
+                                    api_desc="Return certificate information.")
         subs = self._get_regexes()
         self._verify_response('certificate-get-root-resp', subs, response, 200)
 
