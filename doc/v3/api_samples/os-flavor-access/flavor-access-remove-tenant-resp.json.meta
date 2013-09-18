@@ -1,0 +1,11 @@
+{
+    "description": "Remove flavor access for tenant.", 
+    "extension": "os-flavor-access", 
+    "extension_description": "Flavor access support.", 
+    "method": "POST", 
+    "request": "flavor-access-remove-tenant-req.json", 
+    "response": "flavor-access-remove-tenant-resp.json", 
+    "section_name": "Flavor Access", 
+    "status": 200, 
+    "url": "flavors/10/action"
+}
