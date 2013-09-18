@@ -19,20 +19,26 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class QuotaClassesSampleJsonTests(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "os-quota-class-sets"
+    section_name = 'Quota Classes'
+    section_doc = "Quota classes management support."
     set_id = 'test_class'
 
     def test_show_quota_classes(self):
         # Get api sample to show quota classes.
-        response = self._do_get('os-quota-class-sets/%s' % self.set_id)
+        response = self._doc_do_get('os-quota-class-sets/%s', self.set_id,
+                                    'class_id',
+                                    api_desc='Shows the quota for class.')
         subs = {'set_id': self.set_id}
         self._verify_response('quota-classes-show-get-resp', subs,
                               response, 200)
 
     def test_update_quota_classes(self):
         # Get api sample to update quota classes.
-        response = self._do_put('os-quota-class-sets/%s' % self.set_id,
-                                'quota-classes-update-post-req',
-                                {})
+        response = self._doc_do_put('os-quota-class-sets/%s', self.set_id,
+                                    'class_id',
+                                    'quota-classes-update-post-req',
+                                    {},
+                                    api_desc='Updates quota for class.')
         self._verify_response('quota-classes-update-post-resp',
                               {}, response, 200)
 

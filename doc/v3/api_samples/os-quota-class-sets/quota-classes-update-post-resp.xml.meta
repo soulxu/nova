@@ -1,0 +1,11 @@
+{
+    "description": "Updates quota for class.", 
+    "extension": "os-quota-class-sets", 
+    "extension_description": "Quota classes management support.", 
+    "method": "PUT", 
+    "request": "quota-classes-update-post-req.xml", 
+    "response": "quota-classes-update-post-resp.xml", 
+    "section_name": "Quota Classes", 
+    "status": 200, 
+    "url": "os-quota-class-sets/{class_id}"
+}

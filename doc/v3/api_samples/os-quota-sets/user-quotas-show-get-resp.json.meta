@@ -1,0 +1,10 @@
+{
+    "description": "Shows quota for user", 
+    "extension": "os-quota-sets", 
+    "extension_description": "Quotas management support.", 
+    "method": "GET", 
+    "response": "user-quotas-show-get-resp.json", 
+    "section_name": "Quota Sets", 
+    "status": 200, 
+    "url": "os-quota-sets/{tenant_id}?user_id={user_id}"
+}
