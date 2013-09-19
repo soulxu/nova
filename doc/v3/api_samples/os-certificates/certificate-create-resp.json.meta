@@ -1,0 +1,11 @@
+{
+    "description": "Create a certificate.", 
+    "extension": "os-certificates", 
+    "extension_description": "Certificates support.", 
+    "method": "POST", 
+    "request": "certificate-create-req.json", 
+    "response": "certificate-create-resp.json", 
+    "section_name": "Certificates", 
+    "status": 201, 
+    "url": "os-certificates"
+}

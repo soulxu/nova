@@ -1,0 +1,10 @@
+{
+    "description": "Return certificate information.", 
+    "extension": "os-certificates", 
+    "extension_description": "Certificates support.", 
+    "method": "GET", 
+    "response": "certificate-get-root-resp.json", 
+    "section_name": "Certificates", 
+    "status": 200, 
+    "url": "os-certificates/root"
+}
