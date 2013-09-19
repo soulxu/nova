@@ -1,0 +1,10 @@
+{
+    "description": "Extend flavor detail to add accesss attribute to the response of flavor detail.", 
+    "extension": "os-flavor-access", 
+    "extension_description": "Flavor access support.", 
+    "method": "GET", 
+    "response": "flavor-access-detail-resp.xml", 
+    "section_name": "Flavor Access", 
+    "status": 200, 
+    "url": "flavors/detail"
+}

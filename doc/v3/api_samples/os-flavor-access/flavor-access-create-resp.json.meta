@@ -1,0 +1,11 @@
+{
+    "description": "Extend flavor create to add accesss attribute to the response of flavor create.", 
+    "extension": "os-flavor-access", 
+    "extension_description": "Flavor access support.", 
+    "method": "POST", 
+    "request": "flavor-access-create-req.json", 
+    "response": "flavor-access-create-resp.json", 
+    "section_name": "Flavor Access", 
+    "status": 200, 
+    "url": "flavors"
+}
