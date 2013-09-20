@@ -309,7 +309,8 @@ class TestNeutronSecurityGroups(
                     {'name': sg3['id']}]
         security_group_api = self.controller.security_group_api
         sgs = security_group_api.get_instance_security_groups(
-            context.get_admin_context(), test_security_groups.FAKE_UUID1)
+            context.get_admin_context(), test_security_groups.FAKE_UUID1,
+            test_security_groups.FAKE_TENANT_ID)
         self.assertEquals(sgs, expected)
 
     def test_create_port_with_sg_and_port_security_enabled_true(self):
@@ -321,7 +322,8 @@ class TestNeutronSecurityGroups(
             device_id=test_security_groups.FAKE_UUID1)
         security_group_api = self.controller.security_group_api
         sgs = security_group_api.get_instance_security_groups(
-            context.get_admin_context(), test_security_groups.FAKE_UUID1)
+            context.get_admin_context(), test_security_groups.FAKE_UUID1,
+            test_security_groups.FAKE_TENANT_ID)
         self.assertEquals(sgs, [{'name': 'test1'}])
 
     def test_create_port_with_sg_and_port_security_enabled_false(self):
@@ -483,7 +485,7 @@ class TestNeutronSecurityGroupsOutputTest(TestNeutronSecurityGroupsTestCase):
         self.assertEquals(group.get('name'), 'default')
 
     def test_show(self):
-        def fake_get_instance_security_groups(inst, context, id):
+        def fake_get_instance_security_groups(inst, context, id, tenant_id):
             return [{'name': 'fake-2-0'}, {'name': 'fake-2-1'}]
 
         self.stubs.Set(neutron_driver.SecurityGroupAPI,

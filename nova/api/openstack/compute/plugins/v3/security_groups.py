@@ -48,6 +48,19 @@ class SecurityGroupsOutputController(wsgi.Controller):
         self.security_group_api = (
             openstack_driver.get_openstack_security_group_driver())
 
+    def _get_valid_neutron_search_opts(self):
+        """Return server search options supported by neutron."""
+        return ('tenant_id')
+
+    def _remove_invalid_search_options(self, search_options,
+                                       allowed_search_options):
+        """Remove search options that are not valid for neutron."""
+        # Strip out all unknown options
+        unknown_options = [opt for opt in search_options
+                            if opt not in allowed_search_options]
+        for opt in unknown_options:
+            search_options.pop(opt, None)
+
     def _extend_servers(self, req, servers):
         # TODO(arosen) this function should be refactored to reduce duplicate
         # code and use get_instance_security_groups instead of get_db_instance.
@@ -67,12 +80,58 @@ class SecurityGroupsOutputController(wsgi.Controller):
             # neutron security groups the requested security groups for the
             # instance are not in the db and have not been sent to neutron yet.
             if req.method != 'POST':
+                # If there is only one server in the list we just get its
+                # details. If there is more than one and the search options
+                # show this is for a specific tenant we limit the Neutron
+                # search to that Tenant.   If the search is for a specific host
+                # we get the groups for each server individually.  Only if none
+                # of the above are true do we tell the Neutron driver to get
+                # all ports and groups.
+
+                # Get any search options from the request
+                search_opts = {}
+                search_opts.update(req.GET)
+                valid_opts = self._get_valid_neutron_search_opts()
+
+                # If we're not admin looking for all tenants or a specific
+                # tenant limit the search to just the tenant making the request
+                # in case we have admin role in Neutron (which would get all
+                # ports and groups)
+                if ('all_tenants' not in search_opts
+                       and 'tenant_id' not in search_opts
+                       and context.project_id):
+                    search_opts['tenant_id'] = context.project_id
+
+                search_by_host = 'host' in search_opts
+
+                # Remove any search options Neutron doesn't understand
+                self._remove_invalid_search_options(search_opts, valid_opts)
+
                 if len(servers) == 1:
-                    group = (self.security_group_api
+                    groups = (self.security_group_api
                              .get_instance_security_groups(context,
-                                                           servers[0]['id']))
-                    if group:
-                        servers[0][key] = group
+                                    servers[0]['id'], servers[0]['tenant_id']))
+                    if groups:
+                        servers[0][key] = groups
+                elif search_opts:
+                    sg_instance_bindings = (
+                        self.security_group_api
+                        .get_instances_security_groups_bindings(context,
+                                              search_opts=search_opts))
+                    for server in servers:
+                        groups = sg_instance_bindings.get(server['id'])
+                        if groups:
+                            server[key] = groups
+                elif search_by_host:
+                    # Looking for a limited number, so get them one at a time
+                    # rather than have the Neutron driver get details for all
+                    # ports and security groups
+                    for server in servers:
+                        groups = (self.security_group_api
+                                 .get_instance_security_groups(context,
+                                         server['id'], server['tenant_id']))
+                        if groups:
+                            server[key] = groups
                 else:
                     sg_instance_bindings = (
                         self.security_group_api

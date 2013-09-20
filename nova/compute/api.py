@@ -3630,7 +3630,9 @@ class SecurityGroupAPI(base.Base, security_group_base.SecurityGroupBase):
                         context, instance['host'], instance)
 
     def get_instance_security_groups(self, context, instance_uuid,
-                                     detailed=False):
+                                     tenant_id, detailed=False):
+        # Note(PhilD): tenant_id is unused here but needed by the Neutron
+        # driver
         if detailed:
             return self.db.security_group_get_by_instance(context,
                                                           instance_uuid)

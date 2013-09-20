@@ -279,13 +279,14 @@ class SecurityGroupAPI(security_group_base.SecurityGroupBase):
                 raise exc_info[0], exc_info[1], exc_info[2]
         return self._convert_to_nova_security_group_rule_format(rule)
 
-    def get_instances_security_groups_bindings(self, context):
+    def get_instances_security_groups_bindings(self, context, search_opts={}):
         """Returns a dict(instance_id, [security_groups]) to allow obtaining
         all of the instances and their security groups in one shot.
         """
         neutron = neutronv2.get_client(context)
-        ports = neutron.list_ports().get('ports')
-        security_groups = neutron.list_security_groups().get('security_groups')
+        ports = neutron.list_ports(**search_opts).get('ports')
+        security_groups = neutron.list_security_groups(**search_opts).\
+                               get('security_groups')
         security_group_lookup = {}
         instances_security_group_bindings = {}
         for security_group in security_groups:
@@ -311,7 +312,7 @@ class SecurityGroupAPI(security_group_base.SecurityGroupBase):
         return instances_security_group_bindings
 
     def get_instance_security_groups(self, context, instance_uuid,
-                                     detailed=False):
+                                     tenant_id, detailed=False):
         """Returns the security groups that are associated with an instance.
         If detailed is True then it also returns the full details of the
         security groups associated with an instance.
@@ -319,7 +320,9 @@ class SecurityGroupAPI(security_group_base.SecurityGroupBase):
         neutron = neutronv2.get_client(context)
         params = {'device_id': instance_uuid}
         ports = neutron.list_ports(**params)
-        security_groups = neutron.list_security_groups().get('security_groups')
+        params = {'tenant_id': tenant_id}
+        security_groups = neutron.list_security_groups(**params).\
+                              get('security_groups')
 
         security_group_lookup = {}
         for security_group in security_groups:

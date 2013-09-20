@@ -36,6 +36,7 @@ from nova.tests import fake_instance
 from nova.tests import utils
 
 CONF = cfg.CONF
+FAKE_TENANT_ID = 'ce1f063bfabf4e839f51d73ef77e8187'
 FAKE_UUID1 = 'a47ae74e-ab08-447f-8eee-ffd43fc46c16'
 FAKE_UUID2 = 'c6e6430a-6563-4efa-9542-5e93c9e97d18'
 
@@ -1507,7 +1508,7 @@ def fake_compute_create(*args, **kwargs):
     return ([fake_compute_get()], '')
 
 
-def fake_get_instances_security_groups_bindings(inst, context):
+def fake_get_instances_security_groups_bindings(inst, context, search_opts={}):
     return {UUID1: [{'name': 'fake-0-0'}, {'name': 'fake-0-1'}],
             UUID2: [{'name': 'fake-1-0'}, {'name': 'fake-1-1'}]}
 

@@ -211,7 +211,7 @@ class SecurityGroupBase(object):
         raise NotImplementedError()
 
     def get_instance_security_groups(self, context, instance_uuid,
-                                     detailed=False):
+                                     tenant_id, detailed=False):
         raise NotImplementedError()
 
     def add_to_instance(self, context, instance, security_group_name):
