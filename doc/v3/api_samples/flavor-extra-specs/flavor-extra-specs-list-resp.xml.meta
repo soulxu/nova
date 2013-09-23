@@ -1,0 +1,11 @@
+{
+    "description": "List all extra specs for specified flavor", 
+    "extension": "flavor-extra-specs", 
+    "extension_description": "Create, delete, update, list extra specs of flavor.", 
+    "method": "GET", 
+    "request": "flavor-extra-specs-create-req.xml", 
+    "response": "flavor-extra-specs-list-resp.xml", 
+    "section_name": "Flavor Extra Specs", 
+    "status": 200, 
+    "url": "flavors/{flavor_id}/flavor-extra-specs"
+}

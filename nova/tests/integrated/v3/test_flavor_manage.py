@@ -19,6 +19,8 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class FlavorManageSampleJsonTests(api_sample_base.ApiSampleTestBaseV3):
     extension_name = 'flavor-manage'
+    section_name = 'Flavor Manage'
+    section_doc = "Flavor create/delete API support"
 
     def _create_flavor(self):
         """Create a flavor."""
@@ -26,9 +28,9 @@ class FlavorManageSampleJsonTests(api_sample_base.ApiSampleTestBaseV3):
             'flavor_id': 10,
             'flavor_name': "test_flavor"
         }
-        response = self._do_post("flavors",
-                                 "flavor-create-post-req",
-                                 subs)
+        response = self._doc_do_post("flavors", (), (),
+                                     "flavor-create-post-req",
+                                     subs, api_desc="Create new flavor")
         subs.update(self._get_regexes())
         self._verify_response("flavor-create-post-resp", subs, response, 200)
 
@@ -39,8 +41,9 @@ class FlavorManageSampleJsonTests(api_sample_base.ApiSampleTestBaseV3):
     def test_delete_flavor(self):
         # Get api sample to delete a flavor.
         self._create_flavor()
-        response = self._do_delete("flavors/10")
-        self.assertEqual(response.status, 204)
+        response = self._doc_do_delete("flavors/%s", 10, 'flavor_id',
+                                       api_desc="delete a flavor")
+        self._verify_delete_response('flavor-delete', response, 204)
         self.assertEqual(response.read(), '')
 
 

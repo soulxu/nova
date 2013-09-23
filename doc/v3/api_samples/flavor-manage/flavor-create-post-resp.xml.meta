@@ -1,0 +1,11 @@
+{
+    "description": "Create new flavor", 
+    "extension": "flavor-manage", 
+    "extension_description": "Flavor create/delete API support", 
+    "method": "POST", 
+    "request": "flavor-create-post-req.xml", 
+    "response": "flavor-create-post-resp.xml", 
+    "section_name": "Flavor Manage", 
+    "status": 200, 
+    "url": "flavors"
+}

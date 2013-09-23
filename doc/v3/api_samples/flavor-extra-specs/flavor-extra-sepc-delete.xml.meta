@@ -1,0 +1,11 @@
+{
+    "description": "Delete an extra spec by the key", 
+    "extension": "flavor-extra-specs", 
+    "extension_description": "Create, delete, update, list extra specs of flavor.", 
+    "method": "DELETE", 
+    "request": "flavor-extra-specs-create-req.xml", 
+    "response": "flavor-extra-specs-create-resp.xml", 
+    "section_name": "Flavor Extra Specs", 
+    "status": 204, 
+    "url": "flavors/{flavor_id}/flavor-extra-specs/{flavor_extra_spec_key}"
+}

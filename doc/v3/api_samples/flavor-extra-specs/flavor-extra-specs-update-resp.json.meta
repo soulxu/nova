@@ -1,0 +1,11 @@
+{
+    "description": "Update specified extra spec value by the key", 
+    "extension": "flavor-extra-specs", 
+    "extension_description": "Create, delete, update, list extra specs of flavor.", 
+    "method": "PUT", 
+    "request": "flavor-extra-specs-update-req.json", 
+    "response": "flavor-extra-specs-update-resp.json", 
+    "section_name": "Flavor Extra Specs", 
+    "status": 200, 
+    "url": "flavors/{flavor_id}/flavor-extra-specs/{flavor_extra_spec_key}"
+}
