@@ -1,0 +1,10 @@
+{
+    "description": "Return data about the given instance action.", 
+    "extension": "os-instance-actions", 
+    "extension_description": "View a log of actions and events taken on an instance.", 
+    "method": "GET", 
+    "response": "instance-action-get-resp.xml", 
+    "section_name": "Instance Actions", 
+    "status": 200, 
+    "url": "servers/{server_id}/os-instance-actions/{request_id}"
+}

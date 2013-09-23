@@ -1,0 +1,11 @@
+{
+    "description": "Create new flavor.", 
+    "extension": "os-flavor-rxtx", 
+    "extension_description": "Support to show the rxtx status of a flavor.", 
+    "method": "POST", 
+    "request": "flavor-rxtx-post-req.json", 
+    "response": "flavor-rxtx-post-resp.json", 
+    "section_name": "Flavor Rxtx", 
+    "status": 200, 
+    "url": "flavors"
+}
