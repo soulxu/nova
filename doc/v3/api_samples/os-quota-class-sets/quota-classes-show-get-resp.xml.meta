@@ -1,0 +1,10 @@
+{
+    "description": "Shows the quota for class.", 
+    "extension": "os-quota-class-sets", 
+    "extension_description": "Quota classes management support.", 
+    "method": "GET", 
+    "response": "quota-classes-show-get-resp.xml", 
+    "section_name": "Quota Classes", 
+    "status": 200, 
+    "url": "os-quota-class-sets/{class_id}"
+}

@@ -1,0 +1,10 @@
+{
+    "description": "Lists the instance usage audits before specific time", 
+    "extension": "os-instance-usage-audit-log", 
+    "extension_description": "Admin-only Task Log Monitoring.", 
+    "method": "GET", 
+    "response": "inst-usage-audit-log-index-with-before-get-resp.xml", 
+    "section_name": "Instance Usage Audit Log", 
+    "status": 200, 
+    "url": "os-instance-usage-audit-log?before={datetime}"
+}

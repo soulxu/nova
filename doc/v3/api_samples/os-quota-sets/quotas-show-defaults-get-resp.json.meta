@@ -1,0 +1,10 @@
+{
+    "description": "Shows default quotas for tenant.", 
+    "extension": "os-quota-sets", 
+    "extension_description": "Quotas management support.", 
+    "method": "GET", 
+    "response": "quotas-show-defaults-get-resp.json", 
+    "section_name": "Quota Sets", 
+    "status": 200, 
+    "url": "os-quota-sets/{tenant_id}/defaults"
+}

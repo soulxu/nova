@@ -1,0 +1,11 @@
+{
+    "description": "Updates quota for tenant.", 
+    "extension": "os-quota-sets", 
+    "extension_description": "Quotas management support.", 
+    "method": "PUT", 
+    "request": "quotas-update-post-req.json", 
+    "response": "quotas-update-post-resp.json", 
+    "section_name": "Quota Sets", 
+    "status": 200, 
+    "url": "os-quota-sets/{tenant_id}"
+}
