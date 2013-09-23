@@ -1,0 +1,10 @@
+{
+    "description": "Return data about the given flavor id.", 
+    "extension": "os-flavor-rxtx", 
+    "extension_description": "Support to show the rxtx status of a flavor.", 
+    "method": "GET", 
+    "response": "flavor-rxtx-get-resp.json", 
+    "section_name": "Flavor Rxtx", 
+    "status": 200, 
+    "url": "flavors/{flavor_id}"
+}

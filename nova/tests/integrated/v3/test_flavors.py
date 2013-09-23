@@ -18,20 +18,27 @@ from nova.tests.integrated.v3 import api_sample_base
 
 
 class FlavorsSampleJsonTest(api_sample_base.ApiSampleTestBaseV3):
+    extension_name = 'flavors'
     sample_dir = 'flavors'
+    section_name = 'Flavors'
+    section_doc = "Flavors Extension."
 
     def test_flavors_get(self):
-        response = self._do_get('flavors/1')
+        response = self._doc_do_get(
+            'flavors/%s', 1, 'flavor_id',
+            api_desc="Return data about the given flavor id.")
         subs = self._get_regexes()
         self._verify_response('flavor-get-resp', subs, response, 200)
 
     def test_flavors_list(self):
-        response = self._do_get('flavors')
+        response = self._doc_do_get(
+            'flavors', (), (), api_desc="Return all flavors in brief.")
         subs = self._get_regexes()
         self._verify_response('flavors-list-resp', subs, response, 200)
 
     def test_flavors_detail(self):
-        response = self._do_get('flavors/detail')
+        response = self._doc_do_get('flavors/detail', (), (),
+                                    api_desc="Return all flavors in detail.")
         subs = self._get_regexes()
         self._verify_response('flavors-detail-resp', subs, response, 200)
 

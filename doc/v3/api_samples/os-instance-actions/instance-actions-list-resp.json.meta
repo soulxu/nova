@@ -1,0 +1,10 @@
+{
+    "description": "Returns the list of actions recorded for a given instance.", 
+    "extension": "os-instance-actions", 
+    "extension_description": "View a log of actions and events taken on an instance.", 
+    "method": "GET", 
+    "response": "instance-actions-list-resp.json", 
+    "section_name": "Instance Actions", 
+    "status": 200, 
+    "url": "servers/{server_id}/os-instance-actions"
+}

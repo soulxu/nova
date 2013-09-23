@@ -20,10 +20,14 @@ from nova.tests.integrated.v3 import api_sample_base
 class FlavorRxtxJsonTest(api_sample_base.ApiSampleTestBaseV3):
     extension_name = 'os-flavor-rxtx'
     extra_extensions_to_load = ['flavor-manage']
+    section_name = 'Flavor Rxtx'
+    section_doc = "Support to show the rxtx status of a flavor."
 
     def test_flavor_rxtx_get(self):
         flavor_id = 1
-        response = self._do_get('flavors/%s' % flavor_id)
+        response = self._doc_do_get(
+            'flavors/%s', flavor_id, 'flavor_id',
+            api_desc="Return data about the given flavor id.")
         subs = {
             'flavor_id': flavor_id,
             'flavor_name': 'm1.tiny'
@@ -32,7 +36,8 @@ class FlavorRxtxJsonTest(api_sample_base.ApiSampleTestBaseV3):
         self._verify_response('flavor-rxtx-get-resp', subs, response, 200)
 
     def test_flavors_rxtx_detail(self):
-        response = self._do_get('flavors/detail')
+        response = self._doc_do_get('flavors/detail', (), (),
+                                    api_desc="Return all flavors in detail.")
         subs = self._get_regexes()
         self._verify_response('flavor-rxtx-list-resp', subs, response, 200)
 
@@ -41,9 +46,8 @@ class FlavorRxtxJsonTest(api_sample_base.ApiSampleTestBaseV3):
             'flavor_id': 100,
             'flavor_name': 'flavortest'
         }
-        response = self._do_post('flavors',
-                                 'flavor-rxtx-post-req',
-                                 subs)
+        response = self._doc_do_post('flavors', (), (), 'flavor-rxtx-post-req',
+                                     subs, api_desc="Create new flavor.")
         subs.update(self._get_regexes())
         self._verify_response('flavor-rxtx-post-resp', subs, response, 200)
 

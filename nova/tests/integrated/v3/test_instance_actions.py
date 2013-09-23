@@ -25,6 +25,8 @@ from nova.tests import utils as test_utils
 
 class InstanceActionsSampleJsonTest(api_sample_base.ApiSampleTestBaseV3):
     extension_name = 'os-instance-actions'
+    section_name = 'Instance Actions'
+    section_doc = "View a log of actions and events taken on an instance."
 
     def setUp(self):
         super(InstanceActionsSampleJsonTest, self).setUp()
@@ -61,8 +63,10 @@ class InstanceActionsSampleJsonTest(api_sample_base.ApiSampleTestBaseV3):
         fake_request_id = fake_instance_actions.FAKE_REQUEST_ID1
         fake_action = self.actions[fake_uuid][fake_request_id]
 
-        response = self._do_get('servers/%s/os-instance-actions/%s' %
-                                (fake_uuid, fake_request_id))
+        response = self._doc_do_get(
+            'servers/%s/os-instance-actions/%s', (fake_uuid, fake_request_id),
+            ('server_id', 'request_id'),
+            api_desc="Return data about the given instance action.")
         subs = self._get_regexes()
         subs['action'] = '(reboot)|(resize)'
         subs['instance_uuid'] = fake_uuid
@@ -75,7 +79,10 @@ class InstanceActionsSampleJsonTest(api_sample_base.ApiSampleTestBaseV3):
 
     def test_instance_actions_list(self):
         fake_uuid = fake_instance_actions.FAKE_UUID
-        response = self._do_get('servers/%s/os-instance-actions' % (fake_uuid))
+        response = self._doc_do_get(
+            'servers/%s/os-instance-actions', fake_uuid, 'server_id',
+            api_desc="Returns the list of actions recorded for a given "
+                     "instance.")
         subs = self._get_regexes()
         subs['action'] = '(reboot)|(resize)'
         subs['integer_id'] = '[0-9]+'
