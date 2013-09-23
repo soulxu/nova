@@ -1,0 +1,10 @@
+{
+    "description": "delete a flavor", 
+    "extension": "flavor-manage", 
+    "extension_description": "Flavor create/delete API support", 
+    "method": "DELETE", 
+    "request": "flavor-create-post-req.json", 
+    "section_name": "Flavor Manage", 
+    "status": 204, 
+    "url": "flavors/{flavor_id}"
+}
