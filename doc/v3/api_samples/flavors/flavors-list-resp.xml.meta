@@ -1,0 +1,10 @@
+{
+    "description": "Return all flavors in brief.", 
+    "extension": "flavors", 
+    "extension_description": "Flavors Extension.", 
+    "method": "GET", 
+    "response": "flavors-list-resp.xml", 
+    "section_name": "Flavors", 
+    "status": 200, 
+    "url": "flavors"
+}
