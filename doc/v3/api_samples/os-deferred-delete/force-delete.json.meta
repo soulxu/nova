@@ -1,0 +1,10 @@
+{
+    "description": "Force delete of instance before deferred cleanup.", 
+    "extension": "os-deferred-delete", 
+    "extension_description": "Instance deferred delete.", 
+    "method": "POST", 
+    "request": "force-delete-post-req.json", 
+    "section_name": "Deferred Delete", 
+    "status": 202, 
+    "url": "servers/{server_id}/action"
+}

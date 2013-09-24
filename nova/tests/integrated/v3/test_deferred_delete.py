@@ -19,6 +19,8 @@ from nova.tests.integrated.v3 import test_servers
 
 class DeferredDeleteSampleJsonTests(test_servers.ServersSampleBase):
     extension_name = "os-deferred-delete"
+    section_name = 'Deferred Delete'
+    section_doc = "Instance deferred delete."
 
     def setUp(self):
         super(DeferredDeleteSampleJsonTests, self).setUp()
@@ -28,18 +30,21 @@ class DeferredDeleteSampleJsonTests(test_servers.ServersSampleBase):
         uuid = self._post_server()
         response = self._do_delete('servers/%s' % uuid)
 
-        response = self._do_post('servers/%s/action' % uuid,
-                                 'restore-post-req', {})
-        self.assertEqual(response.status, 202)
+        response = self._doc_do_post(
+            'servers/%s/action', uuid, 'server_id', 'restore-post-req', {},
+            api_desc="Restore a previously deleted instance.")
+        self._verify_response('restore', {}, response, 202, has_response=False)
         self.assertEqual(response.read(), '')
 
     def test_force_delete(self):
         uuid = self._post_server()
         response = self._do_delete('servers/%s' % uuid)
 
-        response = self._do_post('servers/%s/action' % uuid,
-                                 'force-delete-post-req', {})
-        self.assertEqual(response.status, 202)
+        response = self._doc_do_post(
+            'servers/%s/action', uuid, 'server_id', 'force-delete-post-req',
+            {}, api_desc='Force delete of instance before deferred cleanup.')
+        self._verify_response('force-delete', {}, response, 202,
+                              has_response=False)
         self.assertEqual(response.read(), '')
 
 

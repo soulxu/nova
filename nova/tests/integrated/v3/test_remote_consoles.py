@@ -19,6 +19,8 @@ from nova.tests.integrated.v3 import test_servers
 
 class ConsolesSampleJsonTests(test_servers.ServersSampleBase):
     extension_name = "os-remote-consoles"
+    section_name = 'Remote Consoles'
+    section_doc = "Interactive Console support."
 
     def setUp(self):
         super(ConsolesSampleJsonTests, self).setUp()
@@ -27,9 +29,10 @@ class ConsolesSampleJsonTests(test_servers.ServersSampleBase):
 
     def test_get_vnc_console(self):
         uuid = self._post_server()
-        response = self._do_post('servers/%s/action' % uuid,
-                                 'get-vnc-console-post-req',
-                                {'action': 'os-getVNCConsole'})
+        response = self._doc_do_post('servers/%s/action', uuid, 'server_id',
+                                     'get-vnc-console-post-req',
+                                     {'action': 'os-getVNCConsole'},
+                                     api_desc='Get text console output.')
         subs = self._get_regexes()
         subs["url"] = \
             "((https?):((//)|(\\\\))+([\w\d:#@%/;$()~_?\+-=\\\.&](#!)?)*)"
@@ -37,9 +40,10 @@ class ConsolesSampleJsonTests(test_servers.ServersSampleBase):
 
     def test_get_spice_console(self):
         uuid = self._post_server()
-        response = self._do_post('servers/%s/action' % uuid,
-                                 'get-spice-console-post-req',
-                                {'action': 'os-getSPICEConsole'})
+        response = self._doc_do_post('servers/%s/action', uuid, 'server_id',
+                                     'get-spice-console-post-req',
+                                     {'action': 'os-getSPICEConsole'},
+                                     api_desc='Get text console output.')
         subs = self._get_regexes()
         subs["url"] = \
             "((https?):((//)|(\\\\))+([\w\d:#@%/;$()~_?\+-=\\\.&](#!)?)*)"

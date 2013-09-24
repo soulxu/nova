@@ -1,0 +1,11 @@
+{
+    "description": "Get text console output.", 
+    "extension": "os-remote-consoles", 
+    "extension_description": "Interactive Console support.", 
+    "method": "POST", 
+    "request": "get-vnc-console-post-req.xml", 
+    "response": "get-vnc-console-post-resp.xml", 
+    "section_name": "Remote Consoles", 
+    "status": 200, 
+    "url": "servers/{server_id}/action"
+}
