@@ -1,0 +1,10 @@
+{
+    "description": "Returns a list of server details for a given user.", 
+    "extension": "os-config-drive", 
+    "extension_description": "Config Drive Extension.", 
+    "method": "GET", 
+    "response": "servers-config-drive-details-resp.xml", 
+    "section_name": "Config Drive", 
+    "status": 200, 
+    "url": "servers/detail"
+}
