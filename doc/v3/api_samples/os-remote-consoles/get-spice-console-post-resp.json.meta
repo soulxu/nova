@@ -1,0 +1,11 @@
+{
+    "description": "Get text console output.", 
+    "extension": "os-remote-consoles", 
+    "extension_description": "Interactive Console support.", 
+    "method": "POST", 
+    "request": "get-spice-console-post-req.json", 
+    "response": "get-spice-console-post-resp.json", 
+    "section_name": "Remote Consoles", 
+    "status": 200, 
+    "url": "servers/{server_id}/action"
+}

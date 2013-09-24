@@ -1,0 +1,10 @@
+{
+    "description": "Restore a previously deleted instance.", 
+    "extension": "os-deferred-delete", 
+    "extension_description": "Instance deferred delete.", 
+    "method": "POST", 
+    "request": "restore-post-req.xml", 
+    "section_name": "Deferred Delete", 
+    "status": 202, 
+    "url": "servers/{server_id}/action"
+}
