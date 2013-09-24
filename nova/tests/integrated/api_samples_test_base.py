@@ -218,8 +218,11 @@ class ApiSampleTestBase(integrated_helpers._IntegratedTestBase):
         """
         return subs
 
-    def _verify_response(self, name, subs, response, exp_code):
+    def _verify_response(self, name, subs, response, exp_code,
+                         has_response=True):
         self.assertEqual(response.status, exp_code)
+        if not has_response:
+            return
         response_data = response.read()
         response_data = self._pretty_data(response_data)
         if not os.path.exists(self._get_template(name)):

@@ -147,10 +147,11 @@ class ApiSampleTestBaseV3(api_samples_test_base.ApiSampleTestBase):
                     outf.write(jsonutils.dumps(self.metainfo, sort_keys=True,
                                                indent=4))
 
-    def _verify_response(self, name, subs, response, exp_code):
+    def _verify_response(self, name, subs, response, exp_code,
+                         has_response=True):
         response = super(ApiSampleTestBaseV3, self)._verify_response(
-            name, subs, response, exp_code)
-        self._write_metafile(name, has_response=True)
+            name, subs, response, exp_code, has_response)
+        self._write_metafile(name, has_response)
         return response
 
     def _verify_delete_response(self, name, response, exp_code):
