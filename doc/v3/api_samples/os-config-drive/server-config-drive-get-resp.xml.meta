@@ -1,0 +1,10 @@
+{
+    "description": "\"Returns server details by server id.\"", 
+    "extension": "os-config-drive", 
+    "extension_description": "Config Drive Extension.", 
+    "method": "GET", 
+    "response": "server-config-drive-get-resp.xml", 
+    "section_name": "Config Drive", 
+    "status": 200, 
+    "url": "servers/{server_id}"
+}

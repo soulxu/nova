@@ -21,6 +21,8 @@ from nova.tests.integrated.v3 import test_servers
 
 class ConfigDriveSampleJsonTest(test_servers.ServersSampleBase):
     extension_name = 'os-config-drive'
+    section_name = 'Config Drive'
+    section_doc = "Config Drive Extension."
 
     def setUp(self):
         super(ConfigDriveSampleJsonTest, self).setUp()
@@ -30,7 +32,9 @@ class ConfigDriveSampleJsonTest(test_servers.ServersSampleBase):
 
     def test_config_drive_show(self):
         uuid = self._post_server()
-        response = self._do_get('servers/%s' % uuid)
+        response = self._doc_do_get(
+            'servers/%s', uuid, 'server_id',
+            api_desc='"Returns server details by server id."')
         subs = self._get_regexes()
         subs['hostid'] = '[a-f0-9]+'
         # config drive can be a string for True or empty value for False
@@ -40,7 +44,9 @@ class ConfigDriveSampleJsonTest(test_servers.ServersSampleBase):
 
     def test_config_drive_detail(self):
         self._post_server()
-        response = self._do_get('servers/detail')
+        response = self._doc_do_get(
+            'servers/detail', (), (),
+            api_desc="Returns a list of server details for a given user.")
         subs = self._get_regexes()
         subs['hostid'] = '[a-f0-9]+'
         # config drive can be a string for True or empty value for False
