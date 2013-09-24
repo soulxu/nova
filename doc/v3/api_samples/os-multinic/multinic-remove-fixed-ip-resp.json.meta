@@ -1,0 +1,10 @@
+{
+    "description": "Removes an IP from an instance.", 
+    "extension": "os-multinic", 
+    "extension_description": "Multiple network support.", 
+    "method": "POST", 
+    "request": "multinic-remove-fixed-ip-req.json", 
+    "section_name": "Multinic", 
+    "status": 202, 
+    "url": "servers/05038599-965b-4bbf-97c6-81ec27c585e1/action"
+}

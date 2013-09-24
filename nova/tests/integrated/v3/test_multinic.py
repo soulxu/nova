@@ -19,6 +19,8 @@ from nova.tests.integrated.v3 import test_servers
 
 class MultinicSampleJsonTest(test_servers.ServersSampleBase):
     extension_name = "os-multinic"
+    section_name = "Multinic"
+    section_doc = "Multiple network support."
 
     def _disable_instance_dns_manager(self):
         # NOTE(markmc): it looks like multinic and instance_dns_manager are
@@ -34,9 +36,14 @@ class MultinicSampleJsonTest(test_servers.ServersSampleBase):
 
     def _add_fixed_ip(self):
         subs = {"networkId": 1}
-        response = self._do_post('servers/%s/action' % (self.uuid),
-                                 'multinic-add-fixed-ip-req', subs)
-        self.assertEqual(response.status, 202)
+        response = self._doc_do_post('servers/%s/action' % (self.uuid),
+                                     (), (),
+                                     'multinic-add-fixed-ip-req', subs,
+                                     api_desc="Adds an IP on a given "
+                                     "network to an instance.")
+        subs = self._get_regexes()
+        self._verify_delete_response("multinic-add-fixed-ip-resp",
+                                     response, 202)
 
     def test_add_fixed_ip(self):
         self._add_fixed_ip()
@@ -45,9 +52,14 @@ class MultinicSampleJsonTest(test_servers.ServersSampleBase):
         self._add_fixed_ip()
 
         subs = {"ip": "10.0.0.4"}
-        response = self._do_post('servers/%s/action' % (self.uuid),
-                                 'multinic-remove-fixed-ip-req', subs)
-        self.assertEqual(response.status, 202)
+        response = self._doc_do_post('servers/%s/action' % (self.uuid),
+                                     (), (),
+                                     'multinic-remove-fixed-ip-req', subs,
+                                     api_desc="Removes an IP from "
+                                     "an instance.")
+        subs = self._get_regexes()
+        self._verify_delete_response("multinic-remove-fixed-ip-resp",
+                                     response, 202)
 
 
 class MultinicSampleXmlTest(MultinicSampleJsonTest):

@@ -1,0 +1,10 @@
+{
+    "description": "Return capacities for a given cell.", 
+    "extension": "os-cells", 
+    "extension_description": "Enables cells-related functionality such as adding neighbor cells, listing neighbor cells, and getting the capabilities of the local cell.", 
+    "method": "GET", 
+    "response": "cells-capacities-resp.xml", 
+    "section_name": "Cells", 
+    "status": 200, 
+    "url": "os-cells/nova/capacities"
+}

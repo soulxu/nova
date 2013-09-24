@@ -1,0 +1,10 @@
+{
+    "description": "Adds an IP on a given network to an instance.", 
+    "extension": "os-multinic", 
+    "extension_description": "Multiple network support.", 
+    "method": "POST", 
+    "request": "multinic-add-fixed-ip-req.json", 
+    "section_name": "Multinic", 
+    "status": 202, 
+    "url": "servers/19b9e3ed-a10e-4b99-a3a5-091f830342b0/action"
+}

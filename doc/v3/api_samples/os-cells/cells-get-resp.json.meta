@@ -1,0 +1,10 @@
+{
+    "description": "Return data about the given cell name.", 
+    "extension": "os-cells", 
+    "extension_description": "Enables cells-related functionality such as adding neighbor cells, listing neighbor cells, and getting the capabilities of the local cell.", 
+    "method": "GET", 
+    "response": "cells-get-resp.json", 
+    "section_name": "Cells", 
+    "status": 200, 
+    "url": "os-cells/cell3"
+}
