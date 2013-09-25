@@ -1,0 +1,10 @@
+{
+    "description": "Retrieve tenant_usage for all tenants.", 
+    "extension": "os-simple-tenant-usage", 
+    "extension_description": "Provide simple tenant usage for tenant.", 
+    "method": "GET", 
+    "response": "simple-tenant-usage-get.xml", 
+    "section_name": "Simple Tenant Usage", 
+    "status": 200, 
+    "url": "os-simple-tenant-usage?start={period_start}&end={period_stop}"
+}
