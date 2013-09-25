@@ -19,9 +19,13 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class LimitsSampleJsonTest(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "limits"
+    section_name = 'Limits'
+    section_doc = 'Provide all global and rate limit information.'
 
     def test_limits_get(self):
-        response = self._do_get('limits')
+        response = self._doc_do_get(
+            'limits', (), (),
+            api_desc="Return all global and rate limit information.")
         subs = self._get_regexes()
         self._verify_response('limit-get-resp', subs, response, 200)
 

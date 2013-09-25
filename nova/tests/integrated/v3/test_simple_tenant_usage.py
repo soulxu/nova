@@ -23,22 +23,19 @@ from nova.tests.integrated.v3 import test_servers
 
 class SimpleTenantUsageSampleJsonTest(test_servers.ServersSampleBase):
     extension_name = "os-simple-tenant-usage"
+    section_name = 'Simple Tenant Usage'
+    section_doc = "Provide simple tenant usage for tenant."
 
     def setUp(self):
         """setUp method for simple tenant usage."""
         super(SimpleTenantUsageSampleJsonTest, self).setUp()
 
-        started = timeutils.utcnow()
-        now = started + datetime.timedelta(hours=1)
+        self.started = timeutils.utcnow()
+        self.now = self.started + datetime.timedelta(hours=1)
 
-        timeutils.set_time_override(started)
+        timeutils.set_time_override(self.started)
         self._post_server()
-        timeutils.set_time_override(now)
-
-        self.query = {
-            'start': str(started),
-            'end': str(now)
-        }
+        timeutils.set_time_override(self.now)
 
     def tearDown(self):
         """tearDown method for simple tenant usage."""
@@ -47,16 +44,23 @@ class SimpleTenantUsageSampleJsonTest(test_servers.ServersSampleBase):
 
     def test_get_tenants_usage(self):
         # Get api sample to get all tenants usage request.
-        response = self._do_get('os-simple-tenant-usage?%s' % (
-                                                urllib.urlencode(self.query)))
+        response = self._doc_do_get(
+            'os-simple-tenant-usage?start=%s&end=%s',
+            (urllib.quote(str(self.started)), urllib.quote(str(self.now))),
+            ('period_start', 'period_stop'),
+            api_desc="Retrieve tenant_usage for all tenants.")
         subs = self._get_regexes()
         self._verify_response('simple-tenant-usage-get', subs, response, 200)
 
     def test_get_tenant_usage_details(self):
         # Get api sample to get specific tenant usage request.
         tenant_id = 'openstack'
-        response = self._do_get('os-simple-tenant-usage/%s?%s' % (tenant_id,
-                                                urllib.urlencode(self.query)))
+        response = self._doc_do_get(
+            'os-simple-tenant-usage/%s?start=%s&end=%s',
+            (tenant_id, urllib.quote(str(self.started)),
+             urllib.quote(str(self.now))),
+            ('tenant_id', 'period_start', 'period_stop'),
+            api_desc="Retrieve tenant_usage for a specified tenant.")
         subs = self._get_regexes()
         self._verify_response('simple-tenant-usage-get-specific', subs,
                               response, 200)

@@ -1,0 +1,10 @@
+{
+    "description": "Return all global and rate limit information.", 
+    "extension": "limits", 
+    "extension_description": "Provide all global and rate limit information.", 
+    "method": "GET", 
+    "response": "limit-get-resp.json", 
+    "section_name": "Limits", 
+    "status": 200, 
+    "url": "limits"
+}
