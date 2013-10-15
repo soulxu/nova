@@ -1,0 +1,10 @@
+{
+    "description": "Returns server details by server id.", 
+    "extension": "os-server-usage", 
+    "extension_description": "Adds launched_at and terminated_at on Servers.", 
+    "method": "GET", 
+    "response": "server-get-resp.xml", 
+    "section_name": "Server Usage", 
+    "status": 200, 
+    "url": "servers/{server_id}"
+}

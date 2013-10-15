@@ -19,6 +19,8 @@ from nova.tests.integrated.v3 import test_servers
 
 class ServerUsageSampleJsonTest(test_servers.ServersSampleBase):
     extension_name = 'os-server-usage'
+    section_name = 'Server Usage'
+    section_doc = "Adds launched_at and terminated_at on Servers."
 
     def setUp(self):
         """setUp method for server usage."""
@@ -26,14 +28,18 @@ class ServerUsageSampleJsonTest(test_servers.ServersSampleBase):
         self.uuid = self._post_server()
 
     def test_show(self):
-        response = self._do_get('servers/%s' % self.uuid)
+        response = self._doc_do_get(
+            'servers/%s', self.uuid, 'server_id',
+            api_desc="Returns server details by server id.")
         subs = self._get_regexes()
         subs['id'] = self.uuid
         subs['hostid'] = '[a-f0-9]+'
         self._verify_response('server-get-resp', subs, response, 200)
 
     def test_details(self):
-        response = self._do_get('servers/detail')
+        response = self._doc_do_get(
+            'servers/detail', (), (),
+            api_desc="Returns a list of server details for a given user.")
         subs = self._get_regexes()
         subs['id'] = self.uuid
         subs['hostid'] = '[a-f0-9]+'

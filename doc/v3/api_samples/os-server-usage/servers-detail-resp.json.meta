@@ -1,0 +1,10 @@
+{
+    "description": "Returns a list of server details for a given user.", 
+    "extension": "os-server-usage", 
+    "extension_description": "Adds launched_at and terminated_at on Servers.", 
+    "method": "GET", 
+    "response": "servers-detail-resp.json", 
+    "section_name": "Server Usage", 
+    "status": 200, 
+    "url": "servers/detail"
+}
