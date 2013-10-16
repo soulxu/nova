@@ -24,14 +24,17 @@ class RescueJsonTest(test_servers.ServersSampleBase):
         req_subs = {
             'password': 'MySecretPass'
         }
-        response = self._do_post('servers/%s/action' % uuid,
-                                 'server-rescue-req', req_subs)
+        response = self._doc_do_post(
+            'servers/%s/action', uuid, 'server_id', 'server-rescue-req',
+            req_subs, api_desc='Rescue instance')
         self._verify_response('server-rescue', req_subs, response, 200)
 
     def _unrescue(self, uuid):
-        response = self._do_post('servers/%s/action' % uuid,
-                                 'server-unrescue-req', {})
-        self.assertEqual(response.status, 202)
+        response = self._doc_do_post(
+            'servers/%s/action', uuid, 'server_id', 'server-unrescue-req',
+            {}, api_desc='Unrescue instance')
+        self._verify_response('server-unrescue', {}, response, 202,
+                              has_response=False)
 
     def test_server_rescue(self):
         uuid = self._post_server()
