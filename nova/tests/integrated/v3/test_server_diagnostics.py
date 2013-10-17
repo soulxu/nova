@@ -19,10 +19,15 @@ from nova.tests.integrated.v3 import test_servers
 
 class ServerDiagnosticsSamplesJsonTest(test_servers.ServersSampleBase):
     extension_name = "os-server-diagnostics"
+    section_name = 'Server Diagnostics'
+    section_doc = ("Allow Admins to view server diagnostics through server "
+                   "action.")
 
     def test_server_diagnostics_get(self):
         uuid = self._post_server()
-        response = self._do_get('servers/%s/os-server-diagnostics' % uuid)
+        response = self._doc_do_get('servers/%s/os-server-diagnostics', uuid,
+                                    'server_id',
+                                    api_desc='Get diagnostics of a server')
         subs = self._get_regexes()
         self._verify_response('server-diagnostics-get-resp', subs,
                               response, 200)

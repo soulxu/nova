@@ -1,0 +1,10 @@
+{
+    "description": "Get diagnostics of a server", 
+    "extension": "os-server-diagnostics", 
+    "extension_description": "Allow Admins to view server diagnostics through server action.", 
+    "method": "GET", 
+    "response": "server-diagnostics-get-resp.json", 
+    "section_name": "Server Diagnostics", 
+    "status": 200, 
+    "url": "servers/{server_id}/os-server-diagnostics"
+}
