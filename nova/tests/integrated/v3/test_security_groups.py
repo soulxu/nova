@@ -34,6 +34,10 @@ def fake_get_instance_security_groups(*args, **kwargs):
 
 class SecurityGroupsJsonTest(test_servers.ServersSampleBase):
     extension_name = 'os-security-groups'
+    section_name = 'Security Groups'
+    section_doc = ('Supports security groups for server. Extend the response '
+                   'of show/detail server with security_group. And support '
+                   'creating server with specific security group')
 
     def setUp(self):
         self.flags(security_group_api=('neutron'))
@@ -44,18 +48,23 @@ class SecurityGroupsJsonTest(test_servers.ServersSampleBase):
                        fake_get_instance_security_groups)
 
     def test_server_create(self):
-        self._post_server()
+        self._doc_post_server(
+            "Creates a new server with security groups for a given user.")
 
     def test_server_get(self):
         uuid = self._post_server()
-        response = self._do_get('servers/%s' % uuid)
+        response = self._doc_do_get(
+            'servers/%s', uuid, 'server_id',
+            api_desc="Returns server details by server id.")
         subs = self._get_regexes()
         subs['hostid'] = '[a-f0-9]+'
         self._verify_response('server-get-resp', subs, response, 200)
 
     def test_server_detail(self):
         self._post_server()
-        response = self._do_get('servers/detail')
+        response = self._doc_do_get(
+            'servers/detail', (), (),
+            api_desc="Returns a list of server details for a given user.")
         subs = self._get_regexes()
         subs['hostid'] = '[a-f0-9]+'
         self._verify_response('servers-detail-resp', subs, response, 200)

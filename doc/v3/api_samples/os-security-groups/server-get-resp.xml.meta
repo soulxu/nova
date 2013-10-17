@@ -1,0 +1,10 @@
+{
+    "description": "Returns server details by server id.", 
+    "extension": "os-security-groups", 
+    "extension_description": "Supports security groups for server. Extend the response of show/detail server with security_group. And support creating server with specific security group", 
+    "method": "GET", 
+    "response": "server-get-resp.xml", 
+    "section_name": "Security Groups", 
+    "status": 200, 
+    "url": "servers/{server_id}"
+}
