@@ -42,8 +42,8 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-pause', {},
             api_desc="Permit Admins to pause the server.")
-        self._verify_response('admin-actions-pause', {}, response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-pause', response, 202)
+
 
     def test_post_unpause(self):
         # Get api samples to unpause server request.
@@ -52,8 +52,7 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-unpause', {},
             api_desc="Permit Admins to unpause the server.")
-        self._verify_response('admin-actions-unpause', {}, response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-unpause', response, 202)
 
     def test_post_suspend(self):
         # Get api samples to suspend server request.
@@ -61,8 +60,7 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-suspend', {},
             api_desc="Permit admins to suspend the server.")
-        self._verify_response('admin-actions-suspend', {}, response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-suspend', response, 202)
 
     def test_post_resume(self):
         # Get api samples to server resume request.
@@ -71,8 +69,7 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-resume', {},
             api_desc="Permit admins to resume the server from suspend.")
-        self._verify_response('admin-actions-resume', {}, response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-resume', response, 202)
 
     def test_post_migrate(self):
         # Get api samples to migrate server request.
@@ -80,8 +77,7 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-migrate', {},
             api_desc="Permit admins to migrate a server to a new host.")
-        self._verify_response('admin-actions-migrate', {}, response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-migrate', response, 202)
 
     def test_post_reset_network(self):
         # Get api samples to reset server network request.
@@ -89,8 +85,7 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-reset-network', {},
             api_desc="Permit admins to reset networking on a server.")
-        self._verify_response('admin-actions-reset-network', {}, response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-reset-network', response, 202)
 
     def test_post_inject_network_info(self):
         # Get api samples to inject network info request.
@@ -98,9 +93,8 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-inject-network-info', {},
             api_desc="Permit admins to inject network info into a server.")
-        self._verify_response('admin-actions-inject-network-info', {},
-                              response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-inject-network-info',
+                                 response, 202)
 
     def test_post_lock_server(self):
         # Get api samples to lock server request.
@@ -108,8 +102,7 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-lock-server', {},
             api_desc="Lock a server instance.")
-        self._verify_response('admin-actions-lock-server', {}, response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-lock-server', response, 202)
 
     def test_post_unlock_server(self):
         # Get api samples to unlock server request.
@@ -118,8 +111,7 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-unlock-server', {},
             api_desc="Unlock a server instance.")
-        self._verify_response('admin-actions-unlock-server', {}, response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-unlock-server', response, 202)
 
     def test_post_backup_server(self):
         # Get api samples to backup server request.
@@ -136,8 +128,7 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-backup-server', {},
             api_desc="Backup a server instance.")
-        self._verify_response('admin-actions-backup-server', {}, response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-backup-server', response, 202)
 
     def test_post_live_migrate_server(self):
         # Get api samples to server live migrate request.
@@ -167,8 +158,7 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-live-migrate', {'hostname': self.compute.host},
             api_desc="Permit admins to (live) migrate a server to a new host.")
-        self._verify_response('admin-actions-live-migrate', {}, response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-live-migrate', response, 202)
 
     def test_post_reset_state(self):
         # get api samples to server reset state request.
@@ -176,9 +166,7 @@ class AdminActionsSamplesJsonTest(test_servers.ServersSampleBase):
             'servers/%s/action', self.uuid, 'server_id',
             'admin-actions-reset-server-state', {},
             api_desc="Permit admins to reset the state of a server.")
-        self._verify_response('admin-actions-reset-server-state', {},
-                              response, 202,
-                              has_response=False)
+        self._verify_no_response('admin-actions-reset-server-state', response, 202)
 
 
 class AdminActionsSamplesXmlTest(AdminActionsSamplesJsonTest):

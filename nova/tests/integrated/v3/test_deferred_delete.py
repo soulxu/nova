@@ -33,7 +33,7 @@ class DeferredDeleteSampleJsonTests(test_servers.ServersSampleBase):
         response = self._doc_do_post(
             'servers/%s/action', uuid, 'server_id', 'restore-post-req', {},
             api_desc="Restore a previously deleted instance.")
-        self._verify_response('restore', {}, response, 202, has_response=False)
+        self._verify_no_response('restore', response, 202)
         self.assertEqual(response.read(), '')
 
     def test_force_delete(self):
@@ -43,9 +43,7 @@ class DeferredDeleteSampleJsonTests(test_servers.ServersSampleBase):
         response = self._doc_do_post(
             'servers/%s/action', uuid, 'server_id', 'force-delete-post-req',
             {}, api_desc='Force delete of instance before deferred cleanup.')
-        self._verify_response('force-delete', {}, response, 202,
-                              has_response=False)
-        self.assertEqual(response.read(), '')
+        self._verify_no_response('force-delete', response, 202)
 
 
 class DeferredDeleteSampleXmlTests(DeferredDeleteSampleJsonTests):

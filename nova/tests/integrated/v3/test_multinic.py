@@ -42,8 +42,7 @@ class MultinicSampleJsonTest(test_servers.ServersSampleBase):
                                      api_desc="Adds an IP on a given "
                                      "network to an instance.")
         subs = self._get_regexes()
-        self._verify_delete_response("multinic-add-fixed-ip-resp",
-                                     response, 202)
+        self._verify_no_response("multinic-add-fixed-ip-resp", response, 202)
 
     def test_add_fixed_ip(self):
         self._add_fixed_ip()
@@ -58,8 +57,7 @@ class MultinicSampleJsonTest(test_servers.ServersSampleBase):
                                      api_desc="Removes an IP from "
                                      "an instance.")
         subs = self._get_regexes()
-        self._verify_delete_response("multinic-remove-fixed-ip-resp",
-                                     response, 202)
+        self._verify_no_response("multinic-remove-fixed-ip-resp", response, 202)
 
 
 class MultinicSampleXmlTest(MultinicSampleJsonTest):

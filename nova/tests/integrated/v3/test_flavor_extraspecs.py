@@ -74,8 +74,7 @@ class FlavorExtraSpecsSampleJsonTests(api_sample_base.ApiSampleTestBaseV3):
             'flavors/%s/flavor-extra-specs/%s', (1, 'key1'),
             ('flavor_id', 'flavor_extra_spec_key'),
             api_desc='Delete an extra spec by the key')
-        self._verify_delete_response('flavor-extra-sepc-delete', response,
-                                     204)
+        self._verify_no_response('flavor-extra-sepc-delete', response, 204)
         self.assertEqual(response.read(), '')
 
 

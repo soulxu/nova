@@ -43,7 +43,7 @@ class FlavorManageSampleJsonTests(api_sample_base.ApiSampleTestBaseV3):
         self._create_flavor()
         response = self._doc_do_delete("flavors/%s", 10, 'flavor_id',
                                        api_desc="delete a flavor")
-        self._verify_delete_response('flavor-delete', response, 204)
+        self._verify_no_response('flavor-delete', response, 204)
         self.assertEqual(response.read(), '')
 
 

@@ -153,6 +153,7 @@ class ApiSampleTestBaseV3(api_samples_test_base.ApiSampleTestBase):
         self._write_metafile(name, has_response=True)
         return response
 
-    def _verify_delete_response(self, name, response, exp_code):
+    def _verify_no_response(self, name, response, exp_code):
         self.assertEqual(response.status, exp_code)
+        self.assertEqual(response.read(), '')
         self._write_metafile(name, has_response=False)

@@ -49,7 +49,7 @@ class QuotaSetsSampleJsonTests(api_sample_base.ApiSampleTestBaseV3):
         response = self._doc_do_delete('os-quota-sets/%s', 'fake_tenant',
                                        'tenant_id',
                                        api_desc='Deletes quota for user.')
-        self._verify_delete_response('quota-delete', response, 204)
+        self._verify_no_response('quota-delete', response, 204)
         self.assertEqual(response.read(), '')
 
     def test_update_quotas_force(self):
@@ -74,7 +74,7 @@ class QuotaSetsSampleJsonTests(api_sample_base.ApiSampleTestBaseV3):
                                        ('fake_tenant', 1),
                                        ('tenant_id', 'user_id'),
                                        api_desc='Deletes quota for user.')
-        self._verify_delete_response('quota-user-delete', response, 204)
+        self._verify_no_response('quota-user-delete', response, 204)
         self.assertEqual(response.read(), '')
 
     def test_update_quotas_for_user(self):

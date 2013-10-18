@@ -120,7 +120,7 @@ class AgentsJsonTest(api_sample_base.ApiSampleTestBaseV3):
         response = self._doc_do_delete(
             'os-agents/%s', agent_id, 'id',
             api_desc='Deletes an existing agent build')
-        self._verify_delete_response('agent-delete', response, 204)
+        self._verify_no_response('agent-delete', response, 204)
         self.assertEqual(response.status, 204)
 
 
