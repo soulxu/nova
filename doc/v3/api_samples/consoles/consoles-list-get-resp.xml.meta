@@ -1,0 +1,11 @@
+{
+    "description": "Lists consoles for a specific server", 
+    "extension": "consoles", 
+    "extension_description": "Creates, lists, shows, deletes consoles for a server", 
+    "method": "GET", 
+    "request": "consoles-create-req.xml", 
+    "response": "consoles-list-get-resp.xml", 
+    "section_name": "Consoles", 
+    "status": 200, 
+    "url": "servers/{server_id}/consoles"
+}

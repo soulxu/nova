@@ -1,0 +1,10 @@
+{
+    "description": "Deletes a specific console for a specific server", 
+    "extension": "consoles", 
+    "extension_description": "Creates, lists, shows, deletes consoles for a server", 
+    "method": "DELETE", 
+    "request": "consoles-create-req.xml", 
+    "section_name": "Consoles", 
+    "status": 202, 
+    "url": "servers/{server_id}/consoles/{console_id}"
+}

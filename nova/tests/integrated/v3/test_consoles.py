@@ -19,6 +19,9 @@ from nova.tests.integrated.v3 import test_servers
 
 class ConsolesSamplesJsonTest(test_servers.ServersSampleBase):
     sample_dir = "consoles"
+    extension_name = 'consoles'
+    section_name = 'Consoles'
+    section_doc = 'Creates, lists, shows, deletes consoles for a server'
 
     def setUp(self):
         super(ConsolesSamplesJsonTest, self).setUp()
@@ -28,8 +31,10 @@ class ConsolesSamplesJsonTest(test_servers.ServersSampleBase):
         self.console = self.start_service('console', host='fake')
 
     def _create_consoles(self, server_uuid):
-        response = self._do_post('servers/%s/consoles' % server_uuid,
-                                 'consoles-create-req', {})
+        response = self._doc_do_post(
+            'servers/%s/consoles', server_uuid, 'server_id',
+            'consoles-create-req', {},
+            api_desc='Creates a new console for a specific server')
         self.assertEqual(response.status, 201)
 
     def test_create_consoles(self):
@@ -39,21 +44,27 @@ class ConsolesSamplesJsonTest(test_servers.ServersSampleBase):
     def test_list_consoles(self):
         uuid = self._post_server()
         self._create_consoles(uuid)
-        response = self._do_get('servers/%s/consoles' % uuid)
+        response = self._doc_do_get(
+            'servers/%s/consoles', uuid, 'server_id',
+            api_desc='Lists consoles for a specific server')
         self._verify_response('consoles-list-get-resp', {}, response, 200)
 
     def test_console_get(self):
         uuid = self._post_server()
         self._create_consoles(uuid)
-        response = self._do_get('servers/%s/consoles/1' % uuid)
+        response = self._doc_do_get(
+            'servers/%s/consoles/%s', (uuid, '1'), ('server_id', 'console_id'),
+            api_desc='Shows a specific console for a specific server')
         subs = self._get_regexes()
         self._verify_response('consoles-get-resp', subs, response, 200)
 
     def test_console_delete(self):
         uuid = self._post_server()
         self._create_consoles(uuid)
-        response = self._do_delete('servers/%s/consoles/1' % uuid)
-        self.assertEqual(response.status, 202)
+        response = self._doc_do_delete(
+            'servers/%s/consoles/%s', (uuid, '1'), ('server_id', 'console_id'),
+            api_desc='Deletes a specific console for a specific server')
+        self._verify_no_response('consoles-delete', response, 202)
 
 
 class ConsolesSamplesXmlTest(ConsolesSamplesJsonTest):
