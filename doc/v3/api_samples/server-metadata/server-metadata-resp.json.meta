@@ -1,0 +1,11 @@
+{
+    "description": "Gets an individual metadata item for a server.", 
+    "extension": null, 
+    "extension_description": "Creates, updates, lists, gets metadatas of servers", 
+    "method": "GET", 
+    "request": "server-metadata-all-req.json", 
+    "response": "server-metadata-resp.json", 
+    "section_name": "Servers Metadata", 
+    "status": 200, 
+    "url": "servers/{server_id}/metadata/{metadata_key}"
+}

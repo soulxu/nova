@@ -20,12 +20,14 @@ from nova.tests.integrated.v3 import test_servers
 class ServersMetadataJsonTest(test_servers.ServersSampleBase):
     extends_name = 'core_only'
     sample_dir = 'server-metadata'
+    section_name = 'Servers Metadata'
+    section_doc = 'Creates, updates, lists, gets metadatas of servers'
 
     def _create_and_set(self, subs):
         uuid = self._post_server()
-        response = self._do_put('servers/%s/metadata' % uuid,
-                                'server-metadata-all-req',
-                                subs)
+        response = self._doc_do_put(
+            'servers/%s/metadata', uuid, 'server_id', 'server-metadata-all-req',
+            subs, api_desc='Sets all metadatas for a server.')
         self._verify_response('server-metadata-all-resp', subs, response, 200)
         return uuid
 
@@ -43,16 +45,19 @@ class ServersMetadataJsonTest(test_servers.ServersSampleBase):
         subs = {'value': 'Foo Value'}
         uuid = self._create_and_set(subs)
         subs['value'] = 'Bar Value'
-        response = self._do_post('servers/%s/metadata' % uuid,
-                                 'server-metadata-all-req',
-                                 subs)
+        response = self._doc_do_post(
+            'servers/%s/metadata', uuid, 'server_id',
+            'server-metadata-all-req', subs,
+            api_desc='Updates all metadatas for a server')
         self._verify_response('server-metadata-all-resp', subs, response, 201)
 
     def test_metadata_get_all(self):
         # Test getting all metadata for a server.
         subs = {'value': 'Foo Value'}
         uuid = self._create_and_set(subs)
-        response = self._do_get('servers/%s/metadata' % uuid)
+        response = self._doc_do_get(
+            'servers/%s/metadata', uuid, 'server_id',
+            api_desc='Gets all metadata for a server.')
         self._verify_response('server-metadata-all-resp', subs, response, 200)
 
     def test_metadata_put(self):
@@ -60,25 +65,31 @@ class ServersMetadataJsonTest(test_servers.ServersSampleBase):
         subs = {'value': 'Foo Value'}
         uuid = self._create_and_set(subs)
         subs['value'] = 'Bar Value'
-        response = self._do_put('servers/%s/metadata/foo' % uuid,
-                                'server-metadata-req',
-                                subs)
+        response = self._doc_do_put(
+            'servers/%s/metadata/%s', (uuid, 'foo'),
+            ('server_id', 'metadata_key'), 'server-metadata-req',
+            subs, api_desc='Puts an individual metadata item for a server.')
         self._verify_response('server-metadata-resp', subs, response, 200)
 
     def test_metadata_get(self):
         # Test getting an individual metadata item for a server.
         subs = {'value': 'Foo Value'}
         uuid = self._create_and_set(subs)
-        response = self._do_get('servers/%s/metadata/foo' % uuid)
+        response = self._doc_do_get(
+            'servers/%s/metadata/%s', (uuid, 'foo'),
+            ('server_id', 'metadata_key'),
+            api_desc='Gets an individual metadata item for a server.')
         self._verify_response('server-metadata-resp', subs, response, 200)
 
     def test_metadata_delete(self):
         # Test deleting an individual metadata item for a server.
         subs = {'value': 'Foo Value'}
         uuid = self._create_and_set(subs)
-        response = self._do_delete('servers/%s/metadata/foo' % uuid)
-        self.assertEqual(response.status, 204)
-        self.assertEqual(response.read(), '')
+        response = self._doc_do_delete(
+            'servers/%s/metadata/%s', (uuid, 'foo'),
+            ('server_id', 'metadata_key'),
+            api_desc='Deletes an individual metadata item for a server.')
+        self._verify_no_response('server-metadata-delete', response, 204)
 
 
 class ServersMetadataXmlTest(ServersMetadataJsonTest):

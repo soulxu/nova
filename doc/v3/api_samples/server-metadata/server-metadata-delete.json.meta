@@ -1,0 +1,11 @@
+{
+    "description": "Deletes an individual metadata item for a server.", 
+    "extension": null, 
+    "extension_description": "Creates, updates, lists, gets metadatas of servers", 
+    "method": "DELETE", 
+    "request": "server-metadata-all-req.json", 
+    "response": "server-metadata-all-resp.json", 
+    "section_name": "Servers Metadata", 
+    "status": 204, 
+    "url": "servers/{server_id}/metadata/{metadata_key}"
+}
