@@ -1,0 +1,10 @@
+{
+    "description": "Gets a server's IP information.", 
+    "extension": "ips", 
+    "extension_description": "Shows and lists IP information for server", 
+    "method": "GET", 
+    "response": "server-ips-resp.xml", 
+    "section_name": "IPs", 
+    "status": 200, 
+    "url": "servers/{server_id}/ips"
+}

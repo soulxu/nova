@@ -1,0 +1,10 @@
+{
+    "description": "Gets a server's IP information by network id.", 
+    "extension": "ips", 
+    "extension_description": "Shows and lists IP information for server", 
+    "method": "GET", 
+    "response": "server-ips-network-resp.json", 
+    "section_name": "IPs", 
+    "status": 200, 
+    "url": "servers/{server_id}/ips/{network_id}"
+}
