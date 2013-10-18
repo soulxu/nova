@@ -1,0 +1,10 @@
+{
+    "description": "Returns a list of server details for a given user.", 
+    "extension": "servers", 
+    "extension_description": "Creates, shows, lists, deletes and updates servers.", 
+    "method": "GET", 
+    "response": "servers-details-resp.xml", 
+    "section_name": "Servers", 
+    "status": 200, 
+    "url": "servers/detail"
+}

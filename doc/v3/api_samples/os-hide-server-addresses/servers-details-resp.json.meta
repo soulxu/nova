@@ -1,0 +1,10 @@
+{
+    "description": "Returns a list of server details for a given user.", 
+    "extension": "os-hide-server-addresses", 
+    "extension_description": "Hide server addresses in certain states.", 
+    "method": "GET", 
+    "response": "servers-details-resp.json", 
+    "section_name": "Hide server addresses", 
+    "status": 200, 
+    "url": "servers/detail"
+}

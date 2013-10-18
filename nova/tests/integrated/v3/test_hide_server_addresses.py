@@ -30,6 +30,8 @@ class ServersSampleHideAddressesJsonTest(test_servers.ServersSampleJsonTest):
     # test_servers.ServersSampleJsonTest does and so it won't default
     # to the extension name
     sample_dir = extension_name
+    section_name = 'Hide server addresses'
+    section_doc = "Hide server addresses in certain states."
 
     def setUp(self):
         # We override osapi_hide_server_address_states in order

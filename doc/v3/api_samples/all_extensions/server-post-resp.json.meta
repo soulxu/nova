@@ -1,0 +1,11 @@
+{
+    "description": "Create new server.", 
+    "extension": "servers", 
+    "extension_description": "Creates, shows, lists, deletes and updates servers.", 
+    "method": "POST", 
+    "request": "server-post-req.json", 
+    "response": "server-post-resp.json", 
+    "section_name": "Servers with all extensions", 
+    "status": 202, 
+    "url": "servers"
+}

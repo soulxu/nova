@@ -1,0 +1,10 @@
+{
+    "description": "Returns a list of server names and ids for a given user.", 
+    "extension": "servers", 
+    "extension_description": "Creates, shows, lists, deletes and updates servers.", 
+    "method": "GET", 
+    "response": "servers-list-resp.xml", 
+    "section_name": "Servers with all extensions", 
+    "status": 200, 
+    "url": "servers"
+}

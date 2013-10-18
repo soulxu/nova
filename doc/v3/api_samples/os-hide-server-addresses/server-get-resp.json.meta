@@ -1,0 +1,11 @@
+{
+    "description": "Returns server details by server id.", 
+    "extension": "os-hide-server-addresses", 
+    "extension_description": "Hide server addresses in certain states.", 
+    "method": "GET", 
+    "request": "server-post-req.json", 
+    "response": "server-get-resp.json", 
+    "section_name": "Hide server addresses", 
+    "status": 200, 
+    "url": "servers/{server_id}"
+}

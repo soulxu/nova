@@ -1,0 +1,11 @@
+{
+    "description": "Create new server.", 
+    "extension": "os-hide-server-addresses", 
+    "extension_description": "Hide server addresses in certain states.", 
+    "method": "POST", 
+    "request": "server-post-req.json", 
+    "response": "server-post-resp.json", 
+    "section_name": "Hide server addresses", 
+    "status": 202, 
+    "url": "servers"
+}
