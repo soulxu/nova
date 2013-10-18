@@ -1,0 +1,11 @@
+{
+    "description": "Enable scheduling for a service.", 
+    "extension": "os-services", 
+    "extension_description": "Index, Update services. Use services extension to get service information and status, and service can be enabled or disabled.", 
+    "method": "PUT", 
+    "request": "service-enable-put-req.json", 
+    "response": "service-enable-put-resp.json", 
+    "section_name": "Services", 
+    "status": 200, 
+    "url": "os-services/enable"
+}

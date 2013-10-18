@@ -1,0 +1,10 @@
+{
+    "description": "Return a list of all running services. Filter by host & service name.", 
+    "extension": "os-services", 
+    "extension_description": "Index, Update services. Use services extension to get service information and status, and service can be enabled or disabled.", 
+    "method": "GET", 
+    "response": "services-list-get-resp.xml", 
+    "section_name": "Services", 
+    "status": 200, 
+    "url": "os-services"
+}

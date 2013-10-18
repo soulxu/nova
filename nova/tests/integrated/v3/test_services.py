@@ -22,6 +22,10 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class ServicesJsonTest(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "os-services"
+    section_name = "Services"
+    section_doc = ("Index, Update services. Use services extension to get "
+                   "service information and status, and service can be "
+                   "enabled or disabled.")
 
     def setUp(self):
         super(ServicesJsonTest, self).setUp()
@@ -39,7 +43,10 @@ class ServicesJsonTest(api_sample_base.ApiSampleTestBaseV3):
 
     def test_services_list(self):
         """Return a list of all agent builds."""
-        response = self._do_get('os-services')
+        response = self._doc_do_get(
+            'os-services', (), (),
+            api_desc=('Return a list of all running services. Filter by host '
+                      '& service name.'))
         subs = {'binary': 'nova-compute',
                 'host': 'host1',
                 'zone': 'nova',
@@ -52,8 +59,9 @@ class ServicesJsonTest(api_sample_base.ApiSampleTestBaseV3):
         """Enable an existing agent build."""
         subs = {"host": "host1",
                 'binary': 'nova-compute'}
-        response = self._do_put('os-services/enable',
-                                'service-enable-put-req', subs)
+        response = self._doc_do_put(
+            'os-services/enable', (), (), 'service-enable-put-req', subs,
+            api_desc='Enable scheduling for a service.')
         subs = {"host": "host1",
                 "binary": "nova-compute"}
         self._verify_response('service-enable-put-resp', subs, response, 200)
@@ -62,8 +70,9 @@ class ServicesJsonTest(api_sample_base.ApiSampleTestBaseV3):
         """Disable an existing agent build."""
         subs = {"host": "host1",
                 'binary': 'nova-compute'}
-        response = self._do_put('os-services/disable',
-                                'service-disable-put-req', subs)
+        response = self._doc_do_put(
+            'os-services/disable', (), (), 'service-disable-put-req', subs,
+            api_desc='Disable scheduling for a service.')
         subs = {"host": "host1",
                 "binary": "nova-compute"}
         self._verify_response('service-disable-put-resp', subs, response, 200)
@@ -73,8 +82,10 @@ class ServicesJsonTest(api_sample_base.ApiSampleTestBaseV3):
         subs = {"host": "host1",
                 'binary': 'nova-compute',
                 'disabled_reason': 'test2'}
-        response = self._do_put('os-services/disable-log-reason',
-                                'service-disable-log-put-req', subs)
+        response = self._doc_do_put(
+            'os-services/disable-log-reason', (), (),
+            'service-disable-log-put-req', subs,
+            api_desc='Disable scheduling for a service with reason.')
         return self._verify_response('service-disable-log-put-resp',
                                      subs, response, 200)
 
