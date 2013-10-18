@@ -1,0 +1,11 @@
+{
+    "description": "Return data about the given interface attachment.", 
+    "extension": "os-attach-interfaces", 
+    "extension_description": "The interface attachment API controller for the OpenStack API.", 
+    "method": "POST", 
+    "request": "attach-interfaces-create-req.json", 
+    "response": "attach-interfaces-create-resp.json", 
+    "section_name": "Attach Interfaces", 
+    "status": 200, 
+    "url": "servers/{server_id}/os-attach-interfaces"
+}

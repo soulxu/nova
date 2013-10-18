@@ -1,0 +1,10 @@
+{
+    "description": "Return data about the given interface attachment.", 
+    "extension": "os-attach-interfaces", 
+    "extension_description": "The interface attachment API controller for the OpenStack API.", 
+    "method": "GET", 
+    "response": "attach-interfaces-show-resp.xml", 
+    "section_name": "Attach Interfaces", 
+    "status": 200, 
+    "url": "servers/{server_id}/os-attach-interfaces/{port_id}"
+}

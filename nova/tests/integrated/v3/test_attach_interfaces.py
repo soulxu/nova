@@ -23,6 +23,9 @@ from nova.tests.integrated.v3 import test_servers
 
 class AttachInterfacesSampleJsonTest(test_servers.ServersSampleBase):
     extension_name = 'os-attach-interfaces'
+    section_name = 'Attach Interfaces'
+    section_doc = ("The interface attachment API controller for the "
+                   "OpenStack API.")
 
     def setUp(self):
         super(AttachInterfacesSampleJsonTest, self).setUp()
@@ -104,8 +107,10 @@ class AttachInterfacesSampleJsonTest(test_servers.ServersSampleBase):
 
     def test_list_interfaces(self):
         instance_uuid = self._post_server()
-        response = self._do_get('servers/%s/os-attach-interfaces'
-                                % instance_uuid)
+        response = self._doc_do_get(
+            'servers/%s/os-attach-interfaces', instance_uuid, 'server_id',
+            api_desc=('Returns the list of interface attachments for a given '
+                      'server.'))
         subs = {
                 'ip_address': '192.168.1.3',
                 'subnet_id': 'f8a6e8f8-c2ec-497c-9f23-da9616de54ef',
@@ -126,8 +131,10 @@ class AttachInterfacesSampleJsonTest(test_servers.ServersSampleBase):
         instance_uuid = self._post_server()
         port_id = 'ce531f90-199f-48c0-816c-13e38010b442'
         self._stub_show_for_instance(instance_uuid, port_id)
-        response = self._do_get('servers/%s/os-attach-interfaces/%s' %
-                                (instance_uuid, port_id))
+        response = self._doc_do_get(
+            'servers/%s/os-attach-interfaces/%s', (instance_uuid, port_id),
+            ('server_id', 'port_id'),
+            api_desc="Return data about the given interface attachment.")
         subs = {
                 'ip_address': '192.168.1.3',
                 'subnet_id': 'f8a6e8f8-c2ec-497c-9f23-da9616de54ef',
@@ -151,9 +158,10 @@ class AttachInterfacesSampleJsonTest(test_servers.ServersSampleBase):
                 'mac_addr': 'fa:16:3e:4c:2c:30',
                 }
         self._stub_show_for_instance(instance_uuid, subs['port_id'])
-        response = self._do_post('servers/%s/os-attach-interfaces'
-                                 % instance_uuid,
-                                 'attach-interfaces-create-req', subs)
+        response = self._doc_do_post(
+            'servers/%s/os-attach-interfaces', instance_uuid, 'server_id',
+            'attach-interfaces-create-req', subs,
+            api_desc="Return data about the given interface attachment.")
         subs.update(self._get_regexes())
         self._verify_response('attach-interfaces-create-resp', subs,
                               response, 200)
@@ -161,10 +169,11 @@ class AttachInterfacesSampleJsonTest(test_servers.ServersSampleBase):
     def test_delete_interfaces(self):
         instance_uuid = self._post_server()
         port_id = 'ce531f90-199f-48c0-816c-13e38010b442'
-        response = self._do_delete('servers/%s/os-attach-interfaces/%s' %
-                                (instance_uuid, port_id))
-        self.assertEqual(response.status, 202)
-        self.assertEqual(response.read(), '')
+        response = self._doc_do_delete(
+            'servers/%s/os-attach-interfaces/%s', (instance_uuid, port_id),
+            ('server_id', 'port_id'),
+            api_desc="Detach an interface from an instance.")
+        self._verify_no_response('attach-interfaces-delete', response, 202)
 
 
 class AttachInterfacesSampleXmlTest(AttachInterfacesSampleJsonTest):

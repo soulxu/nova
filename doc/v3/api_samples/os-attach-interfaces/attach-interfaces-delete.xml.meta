@@ -1,0 +1,9 @@
+{
+    "description": "Detach an interface from an instance.", 
+    "extension": "os-attach-interfaces", 
+    "extension_description": "The interface attachment API controller for the OpenStack API.", 
+    "method": "DELETE", 
+    "section_name": "Attach Interfaces", 
+    "status": 202, 
+    "url": "servers/{server_id}/os-attach-interfaces/{port_id}"
+}
