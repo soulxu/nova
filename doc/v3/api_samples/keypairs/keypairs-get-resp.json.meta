@@ -1,0 +1,11 @@
+{
+    "description": "List of keypairs for a user", 
+    "extension": "keypairs", 
+    "extension_description": "Keypairs management support. Support create, import, list, delete keypairs", 
+    "method": "GET", 
+    "request": "keypairs-post-req.json", 
+    "response": "keypairs-get-resp.json", 
+    "section_name": "Keypairs", 
+    "status": 200, 
+    "url": "keypairs"
+}

@@ -1,0 +1,11 @@
+{
+    "description": "Create keypair", 
+    "extension": "keypairs", 
+    "extension_description": "Keypairs management support. Support create, import, list, delete keypairs", 
+    "method": "POST", 
+    "request": "keypairs-post-req.xml", 
+    "response": "keypairs-post-resp.xml", 
+    "section_name": "Keypairs", 
+    "status": 201, 
+    "url": "keypairs"
+}
