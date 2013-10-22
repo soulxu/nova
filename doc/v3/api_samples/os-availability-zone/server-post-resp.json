@@ -1,0 +1,16 @@
+{
+    "server": {
+        "admin_pass": "RfrRZ7QSzEL2",
+        "id": "87391adb-6f60-4efb-bf1a-07741ddf4352",
+        "links": [
+            {
+                "href": "http://openstack.example.com/v3/servers/87391adb-6f60-4efb-bf1a-07741ddf4352",
+                "rel": "self"
+            },
+            {
+                "href": "http://openstack.example.com/servers/87391adb-6f60-4efb-bf1a-07741ddf4352",
+                "rel": "bookmark"
+            }
+        ]
+    }
+}
