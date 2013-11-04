@@ -19,15 +19,19 @@ from nova.tests.integrated.v3 import test_servers
 
 class AdminPasswordJsonTest(test_servers.ServersSampleBase):
     extension_name = 'os-admin-password'
+    section_name = 'Admin Password'
+    section_doc = 'Admin password management support.'
 
     def test_server_password(self):
         uuid = self._post_server()
         subs = {"password": "foo"}
-        response = self._do_post('servers/%s/action' % uuid,
-                                 'admin-password-change-password',
-                                 subs)
-        self.assertEqual(response.status, 204)
-        self.assertEqual(response.read(), "")
+        response = self._doc_do_post(
+            'servers/%s/action', uuid, 'server_id',
+            'admin-password-change-password',
+            subs,
+            api_desc='Change the password of specific instance.')
+        self._verify_no_response('admin-password-change-password', response,
+                                 204)
 
 
 class AdminPasswordXmlTest(AdminPasswordJsonTest):
