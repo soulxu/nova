@@ -22,6 +22,8 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class UserDataJsonTest(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "os-user-data"
+    section_name = 'User Data'
+    section_doc = "Add user_data to the create of server"
 
     def test_user_data_post(self):
         user_data_contents = '#!/bin/bash\n/bin/su\necho "I am in you!"\n'
@@ -31,7 +33,9 @@ class UserDataJsonTest(api_sample_base.ApiSampleTestBaseV3):
             'host': self._get_host(),
             'user_data': user_data
             }
-        response = self._do_post('servers', 'userdata-post-req', subs)
+        response = self._doc_do_post(
+            'servers', (), (), 'userdata-post-req', subs,
+            api_desc='Create instance with user data')
 
         subs.update(self._get_regexes())
         self._verify_response('userdata-post-resp', subs, response, 202)

@@ -1,0 +1,11 @@
+{
+    "description": "Create instance with user data", 
+    "extension": "os-user-data", 
+    "extension_description": "Add user_data to the create of server", 
+    "method": "POST", 
+    "request": "userdata-post-req.xml", 
+    "response": "userdata-post-resp.xml", 
+    "section_name": "User Data", 
+    "status": 202, 
+    "url": "servers"
+}
