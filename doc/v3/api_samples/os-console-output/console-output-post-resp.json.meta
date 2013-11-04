@@ -1,0 +1,11 @@
+{
+    "description": "Get text console output.", 
+    "extension": "os-console-output", 
+    "extension_description": "Console log output support, with tailing ability.", 
+    "method": "POST", 
+    "request": "console-output-post-req.json", 
+    "response": "console-output-post-resp.json", 
+    "section_name": "Console Output", 
+    "status": 200, 
+    "url": "servers/{server_id}/action"
+}

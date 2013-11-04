@@ -19,11 +19,15 @@ from nova.tests.integrated.v3 import test_servers
 
 class ConsoleOutputSampleJsonTest(test_servers.ServersSampleBase):
     extension_name = "os-console-output"
+    section_name = 'Console Output'
+    section_doc = "Console log output support, with tailing ability."
 
     def test_get_console_output(self):
         uuid = self._post_server()
-        response = self._do_post('servers/%s/action' % uuid,
-                                 'console-output-post-req', {})
+        response = self._doc_do_post(
+            'servers/%s/action', uuid, 'server_id',
+            'console-output-post-req', {},
+            api_desc="Get text console output.")
         subs = self._get_regexes()
         self._verify_response('console-output-post-resp', subs, response, 200)
 
