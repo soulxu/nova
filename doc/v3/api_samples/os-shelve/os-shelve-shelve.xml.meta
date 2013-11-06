@@ -1,0 +1,10 @@
+{
+    "description": "Move an instance into shelved mode.", 
+    "extension": "os-shelve", 
+    "extension_description": "Instance shelve mode.Shelving will power down the instance, and snapshot if not volume backed.Unshelving will restore the instance, which may involve re-scheduling and rebuilding it from a snapshot.", 
+    "method": "POST", 
+    "request": "os-shelve.xml", 
+    "section_name": "Shelve", 
+    "status": 202, 
+    "url": "servers/{server_id}/action"
+}

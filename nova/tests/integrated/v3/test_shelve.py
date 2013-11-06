@@ -23,32 +23,44 @@ CONF = cfg.CONF
 
 class ShelveJsonTest(test_servers.ServersSampleBase):
     extension_name = "os-shelve"
+    section_name = 'Shelve'
+    section_doc = ("Instance shelve mode.Shelving will power down the "
+                   "instance, and snapshot if not volume backed."
+                   "Unshelving will restore the instance, which may involve "
+                   "re-scheduling and rebuilding it from a snapshot.")
 
     def setUp(self):
         super(ShelveJsonTest, self).setUp()
         # Don't offload instance, so we can test the offload call.
         CONF.shelved_offload_time = -1
 
-    def _test_server_action(self, uuid, action):
-        response = self._do_post('servers/%s/action' % uuid,
-                                 'os-shelve',
-                                 {'action': action})
-        self.assertEqual(response.status, 202)
-        self.assertEqual(response.read(), "")
+    def _test_server_action(self, uuid, action, api_desc=None):
+        response = self._doc_do_post(
+            'servers/%s/action', uuid, 'server_id',
+            'os-shelve',
+            {'action': action},
+            api_desc=api_desc)
+        if api_desc:
+            self._verify_no_response('os-shelve-%s' % action, response, 202)
 
     def test_shelve(self):
         uuid = self._post_server()
-        self._test_server_action(uuid, 'shelve')
+        self._test_server_action(uuid, 'shelve',
+                                 "Move an instance into shelved mode.")
 
     def test_shelve_offload(self):
         uuid = self._post_server()
         self._test_server_action(uuid, 'shelve')
-        self._test_server_action(uuid, 'shelve_offload')
+        self._test_server_action(
+            uuid, 'shelve_offload',
+            "Force removal of a shelved instance from the compute node.")
 
     def test_unshelve(self):
         uuid = self._post_server()
         self._test_server_action(uuid, 'shelve')
-        self._test_server_action(uuid, 'unshelve')
+        self._test_server_action(
+            uuid, 'unshelve',
+            "Restore an instance from shelved mode.")
 
 
 class ShelveXmlTest(ShelveJsonTest):
