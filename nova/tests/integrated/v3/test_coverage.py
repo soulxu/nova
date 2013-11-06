@@ -23,6 +23,9 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class CoverageJsonTests(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "os-coverage"
+    section_name = 'Coverage'
+    section_doc = ("This adds support for enabling Ned Batchelder's coverage "
+                   "module for nova from an external api call.")
 
     def setUp(self):
         super(CoverageJsonTests, self).setUp()
@@ -40,9 +43,11 @@ class CoverageJsonTests(api_sample_base.ApiSampleTestBaseV3):
     def _test_start_coverage(self):
         # Start coverage data collection.
         subs = {}
-        response = self._do_post('os-coverage/action',
-                                 'coverage-start-post-req', subs)
-        self.assertEqual(response.status, 204)
+        response = self._doc_do_post(
+            'os-coverage/action', (), (),
+            'coverage-start-post-req', subs,
+            api_desc='Begin recording coverage information.')
+        self._verify_no_response('coverage-start', response, 204)
 
     def test_start_coverage(self):
         self._test_start_coverage()
@@ -50,17 +55,22 @@ class CoverageJsonTests(api_sample_base.ApiSampleTestBaseV3):
     def test_start_coverage_combine(self):
         # Start coverage data collection.
         subs = {}
-        response = self._do_post('os-coverage/action',
-                                 'coverage-start-combine-post-req', subs)
-        self.assertEqual(response.status, 204)
+        response = self._doc_do_post(
+            'os-coverage/action', (), (),
+            'coverage-start-combine-post-req', subs,
+            api_desc=('Begin recording coverage information,'
+                      'and combine the report'))
+        self._verify_no_response('coverage-start-combine', response, 204)
 
     def test_stop_coverage(self):
         # Stop coverage data collection.
         subs = {
             'path': '/.*',
         }
-        response = self._do_post('os-coverage/action',
-                                 'coverage-stop-post-req', subs)
+        response = self._doc_do_post(
+            'os-coverage/action', (), (),
+            'coverage-stop-post-req', subs,
+            api_desc='Stop recording coverage information')
         subs.update(self._get_regexes())
         self._verify_response('coverage-stop-post-resp', subs, response, 200)
 
@@ -70,8 +80,10 @@ class CoverageJsonTests(api_sample_base.ApiSampleTestBaseV3):
             'filename': 'report',
             'path': '/.*/report',
         }
-        response = self._do_post('os-coverage/action',
-                                 'coverage-report-post-req', subs)
+        response = self._doc_do_post(
+            'os-coverage/action', (), (),
+            'coverage-report-post-req', subs,
+            api_desc='Generate a coverage report.')
         subs.update(self._get_regexes())
         self._verify_response('coverage-report-post-resp', subs, response, 200)
 
@@ -80,16 +92,20 @@ class CoverageJsonTests(api_sample_base.ApiSampleTestBaseV3):
             'filename': 'report',
             'path': '/.*/report',
         }
-        response = self._do_post('os-coverage/action',
-                                 'coverage-report-xml-post-req', subs)
+        response = self._doc_do_post(
+            'os-coverage/action', (), (),
+            'coverage-report-xml-post-req', subs,
+            api_desc='Generate a coverage report with xml format.')
         subs.update(self._get_regexes())
         self._verify_response('coverage-report-xml-post-resp',
                               subs, response, 200)
 
     def test_reset_coverage(self):
         self._test_start_coverage()
-        response = self._do_post('os-coverage/action',
-                                 'coverage-reset-post-req', {})
+        response = self._doc_do_post(
+            'os-coverage/action', (), (),
+            'coverage-reset-post-req', {},
+            api_desc='Reset recording coverage information')
         self.assertEqual(response.status, 204)
 
 

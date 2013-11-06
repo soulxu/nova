@@ -1,0 +1,10 @@
+{
+    "description": "Begin recording coverage information.", 
+    "extension": "os-coverage", 
+    "extension_description": "This adds support for enabling Ned Batchelder's coverage module for nova from an external api call.", 
+    "method": "POST", 
+    "request": "coverage-start-post-req.xml", 
+    "section_name": "Coverage", 
+    "status": 204, 
+    "url": "os-coverage/action"
+}

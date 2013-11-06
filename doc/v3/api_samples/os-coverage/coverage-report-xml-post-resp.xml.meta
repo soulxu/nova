@@ -1,0 +1,11 @@
+{
+    "description": "Generate a coverage report with xml format.", 
+    "extension": "os-coverage", 
+    "extension_description": "This adds support for enabling Ned Batchelder's coverage module for nova from an external api call.", 
+    "method": "POST", 
+    "request": "coverage-report-xml-post-req.xml", 
+    "response": "coverage-report-xml-post-resp.xml", 
+    "section_name": "Coverage", 
+    "status": 200, 
+    "url": "os-coverage/action"
+}
