@@ -1,0 +1,11 @@
+{
+    "description": "Creates server with scheduler hints", 
+    "extension": "os-scheduler-hints", 
+    "extension_description": "Pass arbitrary key/value pairs to the scheduler.", 
+    "method": "POST", 
+    "request": "scheduler-hints-post-req.json", 
+    "response": "scheduler-hints-post-resp.json", 
+    "section_name": "Scheduler Hints", 
+    "status": 202, 
+    "url": "servers"
+}

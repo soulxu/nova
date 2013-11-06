@@ -22,14 +22,17 @@ from nova.tests.integrated.v3 import api_sample_base
 
 class SchedulerHintsJsonTest(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "os-scheduler-hints"
+    section_name = 'Scheduler Hints'
+    section_doc = "Pass arbitrary key/value pairs to the scheduler."
 
     def test_scheduler_hints_post(self):
         # Get api sample of scheduler hint post request.
         subs = self._get_regexes()
         subs.update({'image_id': fake.get_valid_image_id(),
                      'image_near': str(uuid.uuid4())})
-        response = self._do_post('servers', 'scheduler-hints-post-req',
-                                 subs)
+        response = self._doc_do_post(
+            'servers', (), (), 'scheduler-hints-post-req',
+            subs, api_desc='Creates server with scheduler hints')
         self._verify_response('scheduler-hints-post-resp', subs, response, 202)
 
 
