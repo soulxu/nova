@@ -15,14 +15,18 @@
 
 from oslo.config import cfg
 
-from nova.tests.integrated.v3 import test_servers
+from nova.tests.image import fake
+from nova.tests.integrated.v3 import api_sample_base
 
 CONF = cfg.CONF
 CONF.import_opt('manager', 'nova.cells.opts', group='cells')
 
 
-class AvailabilityZoneJsonTest(test_servers.ServersSampleBase):
+class AvailabilityZoneJsonTest(api_sample_base.ApiSampleTestBaseV3):
     extension_name = "os-availability-zone"
+    section_name = 'Availability Zone'
+    section_doc = ('Lists and details availability zone. And support creating'
+                   'server with availability zone')
 
     def _setup_services(self):
         self.conductor = self.start_service('conductor',
@@ -37,16 +41,29 @@ class AvailabilityZoneJsonTest(test_servers.ServersSampleBase):
                                         manager=CONF.cells.manager)
 
     def test_availability_zone_list(self):
-        response = self._do_get('os-availability-zone')
+        response = self._doc_do_get(
+            'os-availability-zone', (), (),
+            api_desc="Returns a summary list of availability zone.")
         self._verify_response('availability-zone-list-resp', {}, response, 200)
 
     def test_availability_zone_detail(self):
-        response = self._do_get('os-availability-zone/detail')
+        response = self._doc_do_get(
+            'os-availability-zone/detail', (), (),
+            api_desc="Returns a detailed list of availability zone.")
         self._verify_response('availability-zone-detail-resp', {}, response,
                               200)
 
     def test_availability_zone_post(self):
-        self._post_server()
+        subs = {
+            'image_id': fake.get_valid_image_id(),
+            'host': self._get_host(),
+            'glance_host': self._get_glance_host()
+        }
+        response = self._doc_do_post(
+            'servers', (), (), 'server-post-req', subs,
+            api_desc='Create server with specific availability zone.')
+        subs = self._get_regexes()
+        return self._verify_response('server-post-resp', subs, response, 202)
 
 
 class AvailabilityZoneXmlTest(AvailabilityZoneJsonTest):

@@ -1,0 +1,10 @@
+{
+    "description": "Returns a detailed list of availability zone.", 
+    "extension": "os-availability-zone", 
+    "extension_description": "Lists and details availability zone. And support creatingserver with availability zone", 
+    "method": "GET", 
+    "response": "availability-zone-detail-resp.xml", 
+    "section_name": "Availability Zone", 
+    "status": 200, 
+    "url": "os-availability-zone/detail"
+}

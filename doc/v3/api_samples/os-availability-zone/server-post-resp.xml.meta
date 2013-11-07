@@ -1,0 +1,11 @@
+{
+    "description": "Create server with specific availability zone.", 
+    "extension": "os-availability-zone", 
+    "extension_description": "Lists and details availability zone. And support creatingserver with availability zone", 
+    "method": "POST", 
+    "request": "server-post-req.xml", 
+    "response": "server-post-resp.xml", 
+    "section_name": "Availability Zone", 
+    "status": 202, 
+    "url": "servers"
+}
