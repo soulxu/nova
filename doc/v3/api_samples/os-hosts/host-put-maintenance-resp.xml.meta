@@ -1,5 +1,10 @@
 {
     "description": "Enables a host or puts it in maintenance mode.", 
+    "expected_errors": [
+        400, 
+        404, 
+        501
+    ], 
     "extension": "os-hosts", 
     "extension_description": "Manages physical hosts.", 
     "method": "PUT", 

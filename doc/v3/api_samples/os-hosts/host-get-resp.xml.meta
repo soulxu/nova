@@ -1,5 +1,9 @@
 {
     "description": "Shows information for a specified host.", 
+    "expected_errors": [
+        403, 
+        404
+    ], 
     "extension": "os-hosts", 
     "extension_description": "Manages physical hosts.", 
     "method": "GET", 

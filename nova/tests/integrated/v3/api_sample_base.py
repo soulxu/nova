@@ -18,6 +18,7 @@ import os
 from oslo.config import cfg
 
 from nova.api.openstack import API_V3_CORE_EXTENSIONS  # noqa
+from nova.api.openstack import wsgi
 from nova.openstack.common import jsonutils
 from nova import test
 from nova.tests import fake_network
@@ -58,6 +59,17 @@ class ApiSampleTestBaseV3(api_samples_test_base.ApiSampleTestBase):
         fake_utils.stub_out_utils_spawn_n(self.stubs)
         self.generate_samples = os.getenv('GENERATE_SAMPLES') is not None
         self.metainfo = {}
+        orig_get_method = getattr(wsgi.Resource, 'get_method')
+
+        def _resource_get_method_wrapper(sf, request, action, content_type,
+                                         body):
+            res = orig_get_method(
+                sf, request, action, content_type, body)
+            self.controller_method_called = res[0]
+            return res
+
+        self.stubs.Set(wsgi.Resource, 'get_method',
+                       _resource_get_method_wrapper)
 
     @classmethod
     def _get_sample_path(cls, name, dirname, suffix=''):
@@ -83,6 +95,13 @@ class ApiSampleTestBaseV3(api_samples_test_base.ApiSampleTestBase):
         dirname = os.path.dirname(os.path.abspath(__file__))
         return cls._get_sample_path(name, dirname, suffix='.tpl')
 
+    def _get_expected_errors(self):
+        if hasattr(self.controller_method_called, 'expected_errors'):
+            # Currently we still have some method without
+            # decorator expected_errors. In future, we will enforce that.
+            return self.controller_method_called.expected_errors
+        return []
+
     def _doc_get_response(self, url, method, body=None, strip_version=False,
                            **kwargs):
         response = self._get_response(url, method, body, strip_version)
@@ -94,6 +113,7 @@ class ApiSampleTestBaseV3(api_samples_test_base.ApiSampleTestBase):
             self.metainfo['description'] = kwargs['api_desc']
             self.metainfo['status'] = response.status
             self.metainfo['url'] = kwargs['url_doc']
+            self.metainfo['expected_errors'] = self._get_expected_errors()
         return response
 
     def _convert_url_params(self, params, is_doc=False):

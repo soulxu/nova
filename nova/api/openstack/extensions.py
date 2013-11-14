@@ -489,6 +489,7 @@ def expected_errors(errors):
                     'API log if possible.\n%s') % type(exc)
                 raise webob.exc.HTTPInternalServerError(explanation=msg)
 
+        wrapped.expected_errors = errors
         return wrapped
 
     return decorator

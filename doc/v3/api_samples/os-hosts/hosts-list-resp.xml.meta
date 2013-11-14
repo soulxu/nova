@@ -1,5 +1,6 @@
 {
     "description": "Lists all hosts.", 
+    "expected_errors": [], 
     "extension": "os-hosts", 
     "extension_description": "Manages physical hosts.", 
     "method": "GET", 
