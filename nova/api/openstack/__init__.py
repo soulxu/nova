@@ -349,6 +349,12 @@ class APIRouterV3(base_wsgi.Router):
     def _register_extension(self, ext):
         raise NotImplementedError()
 
+    def _get_resources_from_ext(self, ext):
+        return ext.obj.get_resources()
+
+    def _create_resource(self, controller, inherits):
+        return wsgi.Resource(controller, inherits=inherits)
+
     def _register_resources(self, ext, mapper):
         """Register resources defined by the extensions
 
@@ -356,10 +362,9 @@ class APIRouterV3(base_wsgi.Router):
         get_resources function
         """
 
-        handler = ext.obj
         LOG.debug("Running _register_resources on %s", ext.obj)
 
-        for resource in handler.get_resources():
+        for resource in self._get_resources_from_ext(ext):
             LOG.debug('Extended resource: %s', resource.collection)
 
             inherits = None
@@ -367,8 +372,8 @@ class APIRouterV3(base_wsgi.Router):
                 inherits = self.resources.get(resource.inherits)
                 if not resource.controller:
                     resource.controller = inherits.controller
-            wsgi_resource = wsgi.Resource(resource.controller,
-                                          inherits=inherits)
+            wsgi_resource = self._create_resource(resource.controller,
+                                                  inherits=inherits)
             self.resources[resource.collection] = wsgi_resource
             kargs = dict(
                 controller=wsgi_resource,

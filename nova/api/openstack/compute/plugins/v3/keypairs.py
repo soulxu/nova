@@ -164,12 +164,15 @@ class Keypairs(extensions.V3APIExtensionBase):
     name = "Keypairs"
     alias = ALIAS
     version = 1
+    supported_versions = ['2.1']
+    # NOTE(cyeoh): This is only required until all plugins have a get_resources
+    # which is able to accept a version parameter.
 
-    def get_resources(self):
-        resources = [
-            extensions.ResourceExtension('keypairs',
-                                         KeypairController())]
-        return resources
+    def get_resources(self, version=''):
+        resource_names = {'2.1': 'os-keypairs',
+                          '': ALIAS}
+        return [extensions.ResourceExtension(resource_names[version],
+                                             KeypairController())]
 
     def get_controller_extensions(self):
         controller = Controller()

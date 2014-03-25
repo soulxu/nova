@@ -720,7 +720,7 @@ class Resource(wsgi.Application):
 
     """
 
-    def __init__(self, controller, action_peek=None, inherits=None,
+    def __init__(self, controller, action_peek=None, inherits=None, version='',
                  **deserializers):
         """:param controller: object that implement methods created by routes
                               lib
@@ -747,6 +747,7 @@ class Resource(wsgi.Application):
                                 json=action_peek_json)
         self.action_peek.update(action_peek or {})
 
+        self.version = version
         # Copy over the actions dictionary
         self.wsgi_actions = {}
         if controller:
@@ -759,8 +760,10 @@ class Resource(wsgi.Application):
 
     def register_actions(self, controller):
         """Registers controller actions with this resource."""
-
-        actions = getattr(controller, 'wsgi_actions', {})
+        attr_name = 'wsgi_actions'
+        if self.version:
+            attr_name = '%s_%s' % (attr_name, self.version.replace('.', '_'))
+        actions = getattr(controller, attr_name, {})
         for key, method_name in actions.items():
             self.wsgi_actions[key] = getattr(controller, method_name)
 
@@ -1067,7 +1070,7 @@ class Resource(wsgi.Application):
         return method(req=request, **action_args)
 
 
-def action(name):
+def action(name, version=''):
     """Mark a function as an action.
 
     The given name will be taken as the action key in the body.
@@ -1077,7 +1080,11 @@ def action(name):
     """
 
     def decorator(func):
-        func.wsgi_action = name
+        attr_name = 'wsgi_action'
+        if version:
+            attr_name = '%s_%s' % (attr_name,
+                                   version.replace('.', '_'))
+        setattr(func, attr_name, name)
         return func
     return decorator
 
@@ -1123,10 +1130,13 @@ class ControllerMetaclass(type):
 
         # Find all actions
         actions = {}
+        actions_2_1 = {}
         extensions = []
         # start with wsgi actions from base classes
         for base in bases:
             actions.update(getattr(base, 'wsgi_actions', {}))
+            actions_2_1.update(getattr(base, 'wsgi_actions_2_1', {}))
+
         for key, value in cls_dict.items():
             if not callable(value):
                 continue
@@ -1134,9 +1144,15 @@ class ControllerMetaclass(type):
                 actions[value.wsgi_action] = key
             elif getattr(value, 'wsgi_extends', None):
                 extensions.append(value.wsgi_extends)
+            if getattr(value, 'wsgi_action_2_1', None):
+                actions_2_1[value.wsgi_action_2_1] = key
+            elif getattr(value, 'wsgi_action', None):
+                # Register v3 wsgi_action as v2.1 one if not v2.1 specific.
+                actions_2_1[value.wsgi_action] = key
 
         # Add the actions and extensions to the class dict
         cls_dict['wsgi_actions'] = actions
+        cls_dict['wsgi_actions_2_1'] = actions_2_1
         cls_dict['wsgi_extensions'] = extensions
 
         return super(ControllerMetaclass, mcs).__new__(mcs, name, bases,

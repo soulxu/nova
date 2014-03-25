@@ -32,6 +32,7 @@ from nova.api.openstack.compute import plugins
 from nova.api.openstack.compute import server_metadata
 from nova.api.openstack.compute import servers
 from nova.api.openstack.compute import versions
+from nova.api.openstack import wsgi
 
 allow_instance_snapshots_opt = cfg.BoolOpt('allow_instance_snapshots',
         default=True,
@@ -142,3 +143,20 @@ class APIRouterV3(nova.api.openstack.APIRouterV3):
     @property
     def loaded_extension_info(self):
         return self._loaded_extension_info
+
+
+class APIRouterV21(APIRouterV3):
+
+    def _create_resource(self, controller, inherits):
+        return wsgi.Resource(controller, inherits=inherits,
+                             version='2.1')
+
+    def _get_resources_from_ext(self, ext):
+        # TODO(alex xu): The supported version attribute is only needed until
+        # until all of the V3 API plugins are modified so their get_resources
+        # can accept (and possibly ignore) the version parameter.
+        supported_versions = getattr(ext.obj, 'supported_versions', [])
+        if '2.1' in supported_versions:
+            return ext.obj.get_resources(version='2.1')
+        else:
+            return ext.obj.get_resources()

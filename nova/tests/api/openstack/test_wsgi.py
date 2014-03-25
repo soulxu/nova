@@ -491,6 +491,19 @@ class ResourceTest(test.NoDBTestCase):
                                                  '{"fooAction": true}')
         self.assertEqual(controller._action_foo, method)
 
+    def test_get_method_action_v21_json(self):
+        class Controller(wsgi.Controller):
+            @wsgi.action('fooAction', version='2.1')
+            def _action_foo(self, req, pants=None):
+                return pants
+
+        controller = Controller()
+        resource = wsgi.Resource(controller, version='2.1')
+        method, extensions = resource.get_method(None, 'action',
+                                                 'application/json',
+                                                 '{"fooAction": true}')
+        self.assertEqual(controller._action_foo, method)
+
     def test_get_method_action_xml(self):
         class Controller(wsgi.Controller):
             @wsgi.action('fooAction')
@@ -1233,3 +1246,29 @@ class ValidBodyTest(test.NoDBTestCase):
         wsgi.Resource(controller=None)
         body = {'foo': 'bar'}
         self.assertFalse(self.controller.is_valid_body(body, 'foo'))
+
+
+class ControllerTest(test.NoDBTestCase):
+
+    def test_register_v21_specific_action(self):
+
+        class FakeController(wsgi.Controller):
+            @wsgi.action('fakeAction', '2.1')
+            @wsgi.action('fake_action')
+            def func(self):
+                pass
+
+        controller = FakeController()
+        self.assertEqual(controller.wsgi_actions, {'fake_action': 'func'})
+        self.assertEqual(controller.wsgi_actions_2_1, {'fakeAction': 'func'})
+
+    def test_register_action(self):
+
+        class FakeController(wsgi.Controller):
+            @wsgi.action('fake_action')
+            def func(self):
+                pass
+
+        controller = FakeController()
+        self.assertEqual(controller.wsgi_actions, {'fake_action': 'func'})
+        self.assertEqual(controller.wsgi_actions_2_1, {'fake_action': 'func'})

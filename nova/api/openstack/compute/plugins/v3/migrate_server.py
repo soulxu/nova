@@ -66,6 +66,7 @@ class MigrateServerController(wsgi.Controller):
         return webob.Response(status_int=202)
 
     @extensions.expected_errors((400, 404, 409))
+    @wsgi.action('os-migrateLive', version='2.1')
     @wsgi.action('migrate_live')
     def _migrate_live(self, req, id, body):
         """Permit admins to (live) migrate a server to a new host."""
