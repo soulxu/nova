@@ -1008,20 +1008,42 @@ def remove_invalid_options(context, search_options, allowed_search_options):
         search_options.pop(opt, None)
 
 
+class ServersV2_1Controller(ServersController):
+    # The only thing we should overriding in this class
+    # is the namespaces
+    EXTENSION_CREATE_NAMESPACE = 'nova.api.v2_1.extensions.server.create'
+    EXTENSION_DESERIALIZE_EXTRACT_SERVER_NAMESPACE = (
+        'nova.api.v2_1.extensions.server.create.deserialize')
+
+    EXTENSION_REBUILD_NAMESPACE = 'nova.api.v2_1.extensions.server.rebuild'
+    EXTENSION_DESERIALIZE_EXTRACT_REBUILD_NAMESPACE = (
+        'nova.api.v2_1.extensions.server.rebuild.deserialize')
+
+    EXTENSION_UPDATE_NAMESPACE = 'nova.api.v2_1.extensions.server.update'
+
+
 class Servers(extensions.V3APIExtensionBase):
     """Servers."""
 
     name = "Servers"
     alias = "servers"
     version = 1
+    supported_versions = ['2.1']
 
-    def get_resources(self):
+    def get_resources(self, version=''):
+        if not version:
+            Controller = ServersController
+        elif version == '2.1':
+            Controller = ServersV2_1Controller
+        else:
+            raise NotImplementedError()
+
         member_actions = {'action': 'POST'}
         collection_actions = {'detail': 'GET'}
         resources = [
             extensions.ResourceExtension(
                 'servers',
-                ServersController(extension_info=self.extension_info),
+                Controller(extension_info=self.extension_info),
                 member_name='server', collection_actions=collection_actions,
                 member_actions=member_actions)]
 

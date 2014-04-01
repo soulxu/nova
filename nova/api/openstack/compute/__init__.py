@@ -147,6 +147,8 @@ class APIRouterV3(nova.api.openstack.APIRouterV3):
 
 class APIRouterV21(APIRouterV3):
 
+    API_EXTENSION_NAMESPACE = 'nova.api.v2_1.extensions'
+
     def _create_resource(self, controller, inherits):
         return wsgi.Resource(controller, inherits=inherits,
                              version='2.1')

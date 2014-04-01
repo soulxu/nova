@@ -55,13 +55,14 @@ class fake_loaded_extension_info(object):
         return {'core1': None, 'core2': None, 'noncore1': None}
 
 
-class ExtensionLoadingTestCase(test.NoDBTestCase):
+class APIRouterV3ExtensionsLoading(test.NoDBTestCase):
+    api_router = compute.APIRouterV3
 
     def _set_v3_core(self, core_extensions):
         openstack.API_V3_CORE_EXTENSIONS = core_extensions
 
     def test_extensions_loaded(self):
-        app = compute.APIRouterV3()
+        app = self.api_router()
         self.assertIn('servers', app._loaded_extension_info.extensions)
 
     def test_check_bad_extension(self):
@@ -69,10 +70,10 @@ class ExtensionLoadingTestCase(test.NoDBTestCase):
         self.assertFalse(extension_info._check_extension(fake_bad_extension))
 
     def test_extensions_blacklist(self):
-        app = compute.APIRouterV3()
+        app = self.api_router()
         self.assertIn('os-hosts', app._loaded_extension_info.extensions)
         CONF.set_override('extensions_blacklist', ['os-hosts'], 'osapi_v3')
-        app = compute.APIRouterV3()
+        app = self.api_router()
         self.assertNotIn('os-hosts', app._loaded_extension_info.extensions)
 
     def test_extensions_whitelist_accept(self):
@@ -82,11 +83,11 @@ class ExtensionLoadingTestCase(test.NoDBTestCase):
         openstack.API_V3_CORE_EXTENSIONS = set(['servers'])
         self.addCleanup(self._set_v3_core, v3_core)
 
-        app = compute.APIRouterV3()
+        app = self.api_router()
         self.assertIn('os-hosts', app._loaded_extension_info.extensions)
         CONF.set_override('extensions_whitelist', ['servers', 'os-hosts'],
                           'osapi_v3')
-        app = compute.APIRouterV3()
+        app = self.api_router()
         self.assertIn('os-hosts', app._loaded_extension_info.extensions)
 
     def test_extensions_whitelist_block(self):
@@ -96,10 +97,10 @@ class ExtensionLoadingTestCase(test.NoDBTestCase):
         openstack.API_V3_CORE_EXTENSIONS = set(['servers'])
         self.addCleanup(self._set_v3_core, v3_core)
 
-        app = compute.APIRouterV3()
+        app = self.api_router()
         self.assertIn('os-hosts', app._loaded_extension_info.extensions)
         CONF.set_override('extensions_whitelist', ['servers'], 'osapi_v3')
-        app = compute.APIRouterV3()
+        app = self.api_router()
         self.assertNotIn('os-hosts', app._loaded_extension_info.extensions)
 
     def test_blacklist_overrides_whitelist(self):
@@ -109,12 +110,12 @@ class ExtensionLoadingTestCase(test.NoDBTestCase):
         openstack.API_V3_CORE_EXTENSIONS = set(['servers'])
         self.addCleanup(self._set_v3_core, v3_core)
 
-        app = compute.APIRouterV3()
+        app = self.api_router()
         self.assertIn('os-hosts', app._loaded_extension_info.extensions)
         CONF.set_override('extensions_whitelist', ['servers', 'os-hosts'],
                           'osapi_v3')
         CONF.set_override('extensions_blacklist', ['os-hosts'], 'osapi_v3')
-        app = compute.APIRouterV3()
+        app = self.api_router()
         self.assertNotIn('os-hosts', app._loaded_extension_info.extensions)
         self.assertIn('servers', app._loaded_extension_info.extensions)
         self.assertEqual(len(app._loaded_extension_info.extensions), 1)
@@ -123,17 +124,17 @@ class ExtensionLoadingTestCase(test.NoDBTestCase):
         v3_core = openstack.API_V3_CORE_EXTENSIONS
         openstack.API_V3_CORE_EXTENSIONS = set(['core1', 'core2'])
         self.addCleanup(self._set_v3_core, v3_core)
-        self.assertEqual(len(compute.APIRouterV3.get_missing_core_extensions(
+        self.assertEqual(len(self.api_router.get_missing_core_extensions(
             ['core1', 'core2', 'noncore1'])), 0)
-        missing_core = compute.APIRouterV3.get_missing_core_extensions(
+        missing_core = self.api_router.get_missing_core_extensions(
             ['core1'])
         self.assertEqual(len(missing_core), 1)
         self.assertIn('core2', missing_core)
-        missing_core = compute.APIRouterV3.get_missing_core_extensions([])
+        missing_core = self.api_router.get_missing_core_extensions([])
         self.assertEqual(len(missing_core), 2)
         self.assertIn('core1', missing_core)
         self.assertIn('core2', missing_core)
-        missing_core = compute.APIRouterV3.get_missing_core_extensions(
+        missing_core = self.api_router.get_missing_core_extensions(
             ['noncore1'])
         self.assertEqual(len(missing_core), 2)
         self.assertIn('core1', missing_core)
@@ -149,15 +150,21 @@ class ExtensionLoadingTestCase(test.NoDBTestCase):
         self.addCleanup(self._set_v3_core, v3_core)
         # if no core API extensions are missing then an exception will
         # not be raised when creating an instance of compute.APIRouterV3
-        compute.APIRouterV3()
+        self.api_router()
 
     def test_core_extensions_missing(self):
         self.stubs.Set(stevedore.enabled, 'EnabledExtensionManager',
                        fake_stevedore_enabled_extensions)
         self.stubs.Set(plugins, 'LoadedExtensionInfo',
                        fake_loaded_extension_info)
-        self.assertRaises(exception.CoreAPIMissing, compute.APIRouterV3)
+        self.assertRaises(exception.CoreAPIMissing, self.api_router)
 
+
+class APIRouterV21ExtensionsLoading(APIRouterV3ExtensionsLoading):
+    api_router = compute.APIRouterV21
+
+
+class ExpectedErrorsTestCase(test.NoDBTestCase):
     def test_extensions_expected_error(self):
         @extensions.expected_errors(404)
         def fake_func():
