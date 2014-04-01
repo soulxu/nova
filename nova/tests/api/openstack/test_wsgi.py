@@ -17,7 +17,9 @@ from nova.api.openstack import extensions
 from nova.api.openstack import wsgi
 from nova import exception
 from nova.openstack.common import gettextutils
+from nova.openstack.common import jsonutils
 from nova import test
+from nova.tests.api.openstack import common
 from nova.tests.api.openstack import fakes
 from nova.tests import utils
 
@@ -1272,3 +1274,127 @@ class ControllerTest(test.NoDBTestCase):
         controller = FakeController()
         self.assertEqual(controller.wsgi_actions, {'fake_action': 'func'})
         self.assertEqual(controller.wsgi_actions_2_1, {'fake_action': 'func'})
+
+
+class TranslateV2BodyTest(test.NoDBTestCase):
+
+    def _test_translate_to_(self, gap, req_body_v2, req_body_v3,
+                            resp_body_v3="success"):
+        class Controller(object):
+            @wsgi.v2_translate_body(gap)
+            def create(self, req, body):
+                if req_body_v3 != body:
+                    msg = "Failed to translate v2 request: (%s)" % body
+                    raise webob.exc.HTTPBadRequest(explanation=msg)
+                return resp_body_v3
+
+        app = fakes.TestRouter(Controller())
+        req_base = common.webob_factory('')
+        req = req_base('/tests', 'POST', req_body_v2)
+        # Set SCRIPT_NAME for req.application_url
+        req.environ['SCRIPT_NAME'] = '/v2.1'
+        return req.get_response(app)
+
+    def test_translate_to_request_renamed_key(self):
+        gap = {
+            'request_body': {
+                'foo': {'rename_to': 'bar'}
+            }
+        }
+        req_body_v2 = {'foo': 'value'}
+        req_body_v3 = {'bar': 'value'}
+
+        response = self._test_translate_to_(gap,
+                                            req_body_v2,
+                                            req_body_v3)
+        self.assertEqual(200, response.status_int)
+
+    def test_translate_to_request_renamed_key_fails(self):
+        gap = {
+            'request_body': {
+                'foo': {'rename_to': 'bar'}
+            }
+        }
+        req_body_v2 = {'foo': 'value'}
+        req_body_v3 = {'foo': 'value'}
+
+        response = self._test_translate_to_(gap,
+                                            req_body_v2,
+                                            req_body_v3)
+        self.assertEqual(400, response.status_int)
+
+    def test_translate_to_response_renamed_key(self):
+        req_body_v2 = {'response': 'value'}
+        req_body_v3 = {'response': 'value'}
+
+        gap = {
+            'response_body': {
+                'foo': {'rename_to': 'bar'}
+            }
+        }
+        resp_body_v3 = {'foo': 'value'}
+        resp_body_v2 = {'bar': 'value'}
+
+        response = self._test_translate_to_(gap,
+                                            req_body_v2,
+                                            req_body_v3,
+                                            resp_body_v3)
+        self.assertEqual(200, response.status_int)
+        self.assertEqual(resp_body_v2, jsonutils.loads(response.body))
+
+    def test_translate_to_request_moved_key(self):
+        gap = {
+            'request_body': {
+                'foo': {
+                    'move_to': {
+                        'bar': {'foo': 'DEST'}
+                    }
+                }
+            }
+        }
+        req_body_v2 = {
+            'foo': 'value_foo',
+            'bar': {
+                'bar_child': 'value_bar',
+            },
+        }
+        req_body_v3 = {
+            'bar': {
+                'foo': 'value_foo',
+                'bar_child': 'value_bar',
+            },
+        }
+        response = self._test_translate_to_(gap,
+                                            req_body_v2,
+                                            req_body_v3)
+        self.assertEqual(200, response.status_int)
+
+    def test_translate_to_request_moved_and_rename_key(self):
+        gap = {
+            'request_body': {
+                'foo_root1': {
+                    'move_to': {
+                        'foo_root2': 'DEST'
+                    }
+                },
+                'foo_root2': {
+                    'bar_child1': {
+                        'rename_to': 'bar_child2'
+                    }
+                }
+            }
+        }
+        req_body_v2 = {
+            'foo_root1': {
+                'bar_child1': 'value_bar'
+            }
+        }
+        req_body_v3 = {
+            'foo_root2': {
+                'bar_child2': 'value_bar'
+            }
+        }
+        response = self._test_translate_to_(gap,
+                                            req_body_v2,
+                                            req_body_v3)
+        self.assertEqual(200, response.status_int, response.body)

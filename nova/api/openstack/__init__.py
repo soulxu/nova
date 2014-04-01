@@ -262,7 +262,7 @@ class APIRouterV3(base_wsgi.Router):
         """Simple paste factory, :class:`nova.wsgi.Router` doesn't have one."""
         return cls()
 
-    def __init__(self, init_only=None):
+    def __init__(self, init_only=None, compat_v2=False):
         # TODO(cyeoh): bp v3-api-extension-framework. Currently load
         # all extensions but eventually should be able to exclude
         # based on a config file
@@ -314,7 +314,13 @@ class APIRouterV3(base_wsgi.Router):
             invoke_on_load=True,
             invoke_kwds={"extension_info": self.loaded_extension_info})
 
-        mapper = PlainMapper()
+        if compat_v2:
+            # NOTE: The url of v2 request contains project-id. To handle it,
+            # here uses ProjectMapper().
+            mapper = ProjectMapper()
+        else:
+            mapper = PlainMapper()
+
         self.resources = {}
 
         # NOTE(cyeoh) Core API support is rewritten as extensions

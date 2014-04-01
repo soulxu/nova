@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import functools
 import inspect
 import math
 import time
@@ -501,6 +502,20 @@ def response(code):
     return decorator
 
 
+def v2_response(code):
+    """Attaches response code to a method.
+
+    This decorator associates a response code with a method.  Note
+    that the function attributes are directly manipulated; the method
+    is not wrapped.
+    """
+
+    def decorator(func):
+        func.wsgi_code_v2 = code
+        return func
+    return decorator
+
+
 class ResponseObject(object):
     """Bundles a response object with appropriate serializers.
 
@@ -900,6 +915,9 @@ class Resource(wsgi.Application):
     def _should_have_body(self, request):
         return request.method in _METHODS_WITH_BODY
 
+    def _get_api_version(self, application_url):
+        return application_url.split('/v')[-1].split('.')[0]
+
     @webob.dec.wsgify(RequestClass=Request)
     def __call__(self, request):
         """WSGI method that controls (de)serialization and method dispatch."""
@@ -976,6 +994,9 @@ class Resource(wsgi.Application):
                      'context_project_id': context.project_id}
             return Fault(webob.exc.HTTPBadRequest(explanation=msg))
 
+        # Set v2 API flag
+        request.api_version = self._get_api_version(request.application_url)
+
         # Run pre-processing extensions
         response, post = self.pre_process_extensions(extensions,
                                                      request, action_args)
@@ -1005,6 +1026,13 @@ class Resource(wsgi.Application):
                 resp_obj._bind_method_serializers(serializers)
                 if hasattr(meth, 'wsgi_code'):
                     resp_obj._default_code = meth.wsgi_code
+                if hasattr(meth, 'wsgi_code_v2'):
+                    # NOTE: v3 API methods support v2 compatible wsgi_code.
+                    # wsgi_code_v2 is set only by v3 API methods.
+                    # If a url is v2.1, here uses v2 wsgi_code.
+                    if request.api_version == '2':
+                        resp_obj._default_code = meth.wsgi_code_v2
+
                 resp_obj.preserialize(accept, self.default_serializers)
 
                 # Process post-processing extensions
@@ -1116,6 +1144,99 @@ def extends(*args, **kwargs):
 
     # OK, return the decorator instead
     return decorator
+
+
+def _translate_body(body, gap_body):
+    if not gap_body or not body or not isinstance(body, dict):
+        return
+
+    def __search_and_translate(root, body, gap):
+        for key in gap:
+            if not isinstance(gap[key], dict):
+                continue
+            if 'rename_to' in gap[key]:
+                if key not in body:
+                    continue
+                new_key = gap[key]['rename_to']
+                value = body.pop(key)
+
+                body[new_key] = value
+                continue
+            if 'move_to' in gap[key]:
+                if key not in body:
+                    continue
+                new_place = gap[key]['move_to']
+                value = body.pop(key)
+
+                def __replace_dest(body, pos, stored_value):
+                    for key_pos, value_pos in pos.iteritems():
+                        if isinstance(value_pos, dict):
+                            __replace_dest(body[key_pos], value_pos,
+                                           stored_value)
+                        if value_pos == 'DEST':
+                            body[key_pos] = stored_value
+                __replace_dest(body, new_place, value)
+                continue
+            if key in body:
+                __search_and_translate(root, body[key], gap[key])
+
+    root = body
+    __search_and_translate(root, body, gap_body)
+
+
+def __is_necessary_to_translate_v2(**kwargs):
+    req = kwargs.get('req')
+    if req and req.api_version == '2':
+        return True
+    else:
+        return False
+
+
+def v2_translate_body(gap):
+    gap_request = gap.get('request_body')
+    gap_response = gap.get('response_body')
+
+    def add_translator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            need_translation = __is_necessary_to_translate_v2(**kwargs)
+            if need_translation and gap_request:
+                _translate_body(kwargs.get('body'), gap_request)
+            response = func(*args, **kwargs)
+
+            if need_translation and gap_response:
+                if isinstance(response, ResponseObject):
+                    response_body = response.obj
+                else:
+                    response_body = response
+                _translate_body(response_body, gap_response)
+            return response
+        return wrapper
+    return add_translator
+
+
+def v2_translate_body_for_post_process(gap, key, multi_elements=False):
+    # NOTE: This decorator should be added to API method directly because
+    # of distinguishing v2.1 by referring kwargs.get('req').
+    gap_response = gap.get('response_body')
+
+    def add_translator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            need_translation = __is_necessary_to_translate_v2(**kwargs)
+            func(*args, **kwargs)
+
+            if need_translation and gap_response:
+                resp_obj = kwargs['resp_obj']
+                if multi_elements:
+                    elements = resp_obj.obj[key]
+                    for el in elements:
+                        _translate_body(el, gap_response)
+                else:
+                    el = resp_obj.obj[key]
+                    _translate_body(el, gap_response)
+        return wrapper
+    return add_translator
 
 
 class ControllerMetaclass(type):

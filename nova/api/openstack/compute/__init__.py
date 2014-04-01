@@ -133,9 +133,9 @@ class APIRouterV3(nova.api.openstack.APIRouterV3):
     """Routes requests on the OpenStack API to the appropriate controller
     and method.
     """
-    def __init__(self, init_only=None):
+    def __init__(self, init_only=None, compat_v2=False):
         self._loaded_extension_info = plugins.LoadedExtensionInfo()
-        super(APIRouterV3, self).__init__(init_only)
+        super(APIRouterV3, self).__init__(init_only, compat_v2)
 
     def _register_extension(self, ext):
         return self.loaded_extension_info.register_extension(ext.obj)
@@ -152,6 +152,10 @@ class APIRouterV21(APIRouterV3):
     def _create_resource(self, controller, inherits):
         return wsgi.Resource(controller, inherits=inherits,
                              version='2.1')
+
+    def __init__(self, init_only=None):
+        self._loaded_extension_info = plugins.LoadedExtensionInfo()
+        super(APIRouterV21, self).__init__(init_only, compat_v2=True)
 
     def _get_resources_from_ext(self, ext):
         # TODO(alex xu): The supported version attribute is only needed until
