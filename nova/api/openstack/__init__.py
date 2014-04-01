@@ -39,6 +39,9 @@ api_opts = [
         cfg.BoolOpt('enabled',
                     default=False,
                     help='Whether the V3 API is enabled or not'),
+        cfg.BoolOpt('v2_1_emulation_enabled',
+                    default=True,
+                    help='Whether the V2.1 API emulation is enabled or not'),
         cfg.ListOpt('extensions_blacklist',
                     default=[],
                     help='A list of v3 API extensions to never load. '
@@ -291,9 +294,14 @@ class APIRouterV3(base_wsgi.Router):
             else:
                 return False
 
-        if not CONF.osapi_v3.enabled:
-            LOG.info(_("V3 API has been disabled by configuration"))
-            return
+        if compat_v2:
+            if not CONF.osapi_v3.v2_1_emulation_enabled:
+                LOG.info(_("V2.1 API has been disabled by configuration"))
+                return
+        else:
+            if not CONF.osapi_v3.enabled:
+                LOG.info(_("V3 API has been disabled by configuration"))
+                return
 
         self.init_only = init_only
         LOG.debug("v3 API Extension Blacklist: %s",
