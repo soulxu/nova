@@ -146,12 +146,16 @@ class HypervisorsTest(test.NoDBTestCase):
                        fake_instance_get_all_by_host)
 
     def test_view_hypervisor_nodetail_noservers(self):
-        result = self.controller._view_hypervisor(TEST_HYPERS[0], False)
+        req = fakes.HTTPRequestV3.blank('/os-hypervisors',
+                                        use_admin_context=True)
+        result = self.controller._view_hypervisor(req, TEST_HYPERS[0], False)
 
         self.assertEqual(result, dict(id=1, hypervisor_hostname="hyper1"))
 
     def test_view_hypervisor_detail_noservers(self):
-        result = self.controller._view_hypervisor(TEST_HYPERS[0], True)
+        req = fakes.HTTPRequestV3.blank('/os-hypervisors',
+                                        use_admin_context=True)
+        result = self.controller._view_hypervisor(req, TEST_HYPERS[0], True)
 
         self.assertEqual(result, dict(
                 id=1,
@@ -174,7 +178,9 @@ class HypervisorsTest(test.NoDBTestCase):
                 service=dict(id=1, host='compute1')))
 
     def test_view_hypervisor_servers(self):
-        result = self.controller._view_hypervisor(TEST_HYPERS[0], False,
+        req = fakes.HTTPRequestV3.blank('/os-hypervisors',
+                                        use_admin_context=True)
+        result = self.controller._view_hypervisor(req, TEST_HYPERS[0], False,
                                                   TEST_SERVERS)
 
         self.assertEqual(result, dict(

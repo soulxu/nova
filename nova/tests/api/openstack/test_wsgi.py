@@ -1398,3 +1398,36 @@ class TranslateV2BodyTest(test.NoDBTestCase):
                                             req_body_v2,
                                             req_body_v3)
         self.assertEqual(200, response.status_int, response.body)
+
+
+class FakeController(wsgi.Controller):
+
+    @wsgi.Controller.version('2.1')
+    def fake_func(self, req):
+        return 1
+
+    @wsgi.Controller.version('3.0')
+    def fake_func(self, req):
+        return 2
+
+    def normal_func(self, req):
+        return 3
+
+
+class ControllerTest(test.NoDBTestCase):
+
+    def test_call_multi_version_function(self):
+        controller = FakeController()
+        req = wsgi.Request.blank('/tests/123', method='POST',
+                                 base_url='http://localhost/v2.1')
+        self.assertEqual(controller.fake_func(req), 1)
+
+        req = wsgi.Request.blank('/tests/123', method='POST',
+                                 base_url='http://localhost/v3')
+        self.assertEqual(controller.fake_func(req), 2)
+
+    def test_call_normal_function(self):
+        controller = FakeController()
+        req = wsgi.Request.blank('/tests/123', method='POST',
+                                 base_url='http://localhost/v3')
+        self.assertEqual(controller.normal_func(req), 3)

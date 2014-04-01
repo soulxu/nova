@@ -1253,10 +1253,13 @@ class ControllerMetaclass(type):
         actions = {}
         actions_2_1 = {}
         extensions = []
+        multi_version_funcs = []
         # start with wsgi actions from base classes
         for base in bases:
             actions.update(getattr(base, 'wsgi_actions', {}))
             actions_2_1.update(getattr(base, 'wsgi_actions_2_1', {}))
+            multi_version_funcs.extend(
+                getattr(base, 'multi_version_funcs', []))
 
         for key, value in cls_dict.items():
             if not callable(value):
@@ -1270,11 +1273,15 @@ class ControllerMetaclass(type):
             elif getattr(value, 'wsgi_action', None):
                 # Register v3 wsgi_action as v2.1 one if not v2.1 specific.
                 actions_2_1[value.wsgi_action] = key
+            if getattr(value, 'multi_version', None):
+                multi_version_funcs.append(key)
+                del cls_dict[key]
 
         # Add the actions and extensions to the class dict
         cls_dict['wsgi_actions'] = actions
         cls_dict['wsgi_actions_2_1'] = actions_2_1
         cls_dict['wsgi_extensions'] = extensions
+        cls_dict['multi_version_funcs'] = multi_version_funcs
 
         return super(ControllerMetaclass, mcs).__new__(mcs, name, bases,
                                                        cls_dict)
@@ -1308,6 +1315,31 @@ class Controller(object):
                 return False
 
         return is_dict(body[entity_name])
+
+    @classmethod
+    def version(cls, ver):
+        def decorator(f):
+            f.multi_version = True
+            setattr(cls, '%s_%s' % (f.__name__, ver), f)
+            return f
+        return decorator
+
+    def __getattr__(self, key):
+        if key in self.multi_version_funcs:
+
+            def multi_version_helper(*args, **kwargs):
+                if len(args) == 0:
+                    req = kwargs['req']
+                else:
+                    req = args[0]
+                version = {'v2.1': '2.1',
+                           'v2': '2.1',
+                           'v3': '3.0'}[req.application_url.split('/')[-1]]
+                return getattr(
+                    self, '%s_%s' % (key, version))(*args, **kwargs)
+
+            return multi_version_helper
+        return super(Controller, self).__getattr__(self, key)
 
 
 class Fault(webob.exc.HTTPException):
