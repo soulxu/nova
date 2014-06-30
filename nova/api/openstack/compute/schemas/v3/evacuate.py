@@ -22,13 +22,15 @@ evacuate = {
             'type': 'object',
             'properties': {
                 'host': parameter_types.hostname,
-                'on_shared_storage': parameter_types.boolean,
-                'admin_password': parameter_types.admin_password,
+                'onSharedStorage': parameter_types.boolean,
+                'adminPass': parameter_types.admin_password,
             },
-            'required': ['host', 'on_shared_storage'],
+            'required': ['host', 'onSharedStorage'],
             'additionalProperties': False,
         },
     },
     'required': ['evacuate'],
     'additionalProperties': False,
+    'ext:mapping': [('onSharedStorage', 'on_shared_storage'),
+                    ('adminPass', 'admin_password')]
 }

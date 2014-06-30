@@ -18,6 +18,7 @@ Request Body validating middleware.
 
 import functools
 
+from nova.openstack.common import importutils
 from validators import _SchemaValidator
 
 
@@ -44,13 +45,23 @@ def schema(request_body_schema):
     :argument dict request_body_schema: a schema to validate request body
 
     """
-    schema_validator = _SchemaValidator(request_body_schema)
 
     def add_validator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            req = kwargs['req']
+            if isinstance(request_body_schema, str):
+                # There isn't only support v2.1 and v3. There will support
+                # any version for micro_version.
+                version = '2_1' if req.api_version == '2' else '3_0'
+                schema_path = ('nova.api.openstack.compute.schemas.v3.'
+                               '%(extension)s_%(version)s.%(extension)s') % {
+                                    'extension': request_body_schema,
+                                    'version': version}
+                schema = importutils.import_class(schema_path)
+            schema_validator = _SchemaValidator(schema)
             schema_validator.validate(kwargs['body'])
-            _get_parameters(kwargs['body'], request_body_schema, kwargs)
+            _get_parameters(kwargs['body'], schema, kwargs)
             return func(*args, **kwargs)
         return wrapper
     return add_validator

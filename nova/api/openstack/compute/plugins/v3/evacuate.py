@@ -46,7 +46,7 @@ class EvacuateController(wsgi.Controller):
     @wsgi.response(202)
     @extensions.expected_errors((400, 404, 409))
     @wsgi.action('evacuate')
-    @validation.schema(evacuate.evacuate)
+    @validation.schema('evacuate')
     def _evacuate(self, req, id, body, host, on_shared_storage,
                   admin_password):
         """Permit admins to evacuate a server from a failed host
