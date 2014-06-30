@@ -21,6 +21,20 @@ import functools
 from validators import _SchemaValidator
 
 
+def _get_parameters_helper(body, schema, mapping, params):
+    if 'properties' in schema:
+        for key in schema['properties'].keys():
+            params[mapping.get(key, key)] = body.get(key)
+
+
+def _get_parameters(body, schema, params):
+    mapping = {}
+    if 'ext:mapping' in schema:
+        mapping = dict(schema['ext:mapping'])
+    root_key, root_schema = schema['properties'].items()[0]
+    _get_parameters_helper(body[root_key], root_schema, mapping, params)
+
+
 def schema(request_body_schema):
     """Register a schema to validate request body.
 
@@ -36,6 +50,7 @@ def schema(request_body_schema):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             schema_validator.validate(kwargs['body'])
+            _get_parameters(kwargs['body'], request_body_schema, kwargs)
             return func(*args, **kwargs)
         return wrapper
     return add_validator

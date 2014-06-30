@@ -47,27 +47,25 @@ class EvacuateController(wsgi.Controller):
     @extensions.expected_errors((400, 404, 409))
     @wsgi.action('evacuate')
     @validation.schema(evacuate.evacuate)
-    def _evacuate(self, req, id, body):
+    def _evacuate(self, req, id, body, host, on_shared_storage,
+                  admin_password):
         """Permit admins to evacuate a server from a failed host
         to a new one.
         """
         context = req.environ["nova.context"]
         authorize(context)
 
-        evacuate_body = body["evacuate"]
-        host = evacuate_body["host"]
-        on_shared_storage = strutils.bool_from_string(
-                                        evacuate_body["on_shared_storage"])
+        on_shared_storage = strutils.bool_from_string(on_shared_storage)
 
         password = None
-        if 'admin_password' in evacuate_body:
+        if admin_password:
             # check that if requested to evacuate server on shared storage
             # password not specified
             if on_shared_storage:
                 msg = _("admin password can't be changed on existing disk")
                 raise exc.HTTPBadRequest(explanation=msg)
 
-            password = evacuate_body['admin_password']
+            password = admin_password
         elif not on_shared_storage:
             password = utils.generate_password()
 
