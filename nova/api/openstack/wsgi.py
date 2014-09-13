@@ -71,6 +71,8 @@ _METHODS_WITH_BODY = [
     'PUT',
 ]
 
+OS_COMPUTE_MIN_VERSION = "2.1"
+
 
 class Request(webob.Request):
     """Add some OpenStack API-specific logic to the base webob.Request."""
@@ -78,6 +80,10 @@ class Request(webob.Request):
     def __init__(self, *args, **kwargs):
         super(Request, self).__init__(*args, **kwargs)
         self._extension_data = {'db_items': {}}
+        if 'X-OS-Compute-Version' in self.headers:
+            self.version = self.headers['X-OS-Compute-Version']
+        else:
+            self.version = OS_COMPUTE_MIN_VERSION
 
     def cache_db_items(self, key, items, item_key='id'):
         """Allow API methods to store objects from a DB query to be
@@ -930,10 +936,11 @@ class Resource(wsgi.Application):
                                    'body': unicode(body, 'utf-8')}
             LOG.debug(logging.mask_password(msg))
         LOG.debug("Calling method '%(meth)s' (Content-type='%(ctype)s', "
-                  "Accept='%(accept)s')",
+                  "Accept='%(accept)s', X-OS-Compute-Version=%(version)s)",
                   {'meth': str(meth),
                    'ctype': content_type,
-                   'accept': accept})
+                   'accept': accept,
+                   'version': request.version})
 
         # Now, deserialize the request body...
         try:
@@ -1115,9 +1122,13 @@ class ControllerMetaclass(type):
         # Find all actions
         actions = {}
         extensions = []
+        multi_version_funcs = []
+        funcs_dict = {}
         # start with wsgi actions from base classes
         for base in bases:
             actions.update(getattr(base, 'wsgi_actions', {}))
+            multi_version_funcs.extend(
+                getattr(base, 'multi_version_funcs', []))
         for key, value in cls_dict.items():
             if not callable(value):
                 continue
@@ -1125,13 +1136,48 @@ class ControllerMetaclass(type):
                 actions[value.wsgi_action] = key
             elif getattr(value, 'wsgi_extends', None):
                 extensions.append(value.wsgi_extends)
+            if getattr(value, 'multi_version', None):
+                multi_version_funcs.append(key)
+                if key not in funcs_dict:
+                    # TODO(alex_xu): Need a checking for version overlap with
+                    # other functions
+                    funcs_dict[key] = [value]
+                else:
+                    funcs_dict[key].append(value)
+                del cls_dict[key]
 
         # Add the actions and extensions to the class dict
         cls_dict['wsgi_actions'] = actions
         cls_dict['wsgi_extensions'] = extensions
+        cls_dict['multi_version_funcs'] = multi_version_funcs
+        cls_dict['funcs_dict'] = funcs_dict
 
         return super(ControllerMetaclass, mcs).__new__(mcs, name, bases,
                                                        cls_dict)
+
+
+def _compare_version(version1, version2):
+    version1_parts = version1.split('.')
+    version2_parts = version2.split('.')
+
+    if int(version1_parts[0]) < int(version2_parts[0]):  # Major
+        return -1
+    if int(version1_parts[0]) > int(version2_parts[0]):  # Major
+        return 1
+    if int(version1_parts[0]) == int(version2_parts[0]):  # Major
+        if int(version1_parts[1]) < int(version2_parts[1]):
+            return -1
+        if int(version1_parts[1]) > int(version2_parts[1]):
+            return 1
+        if int(version1_parts[1]) == int(version2_parts[1]):
+            return 0
+
+
+def _version_in_range(func, version):
+    if (_compare_version(func.base_version, version) == 1 or
+        _compare_version(func.max_version, version) == -1):
+        return False
+    return True
 
 
 @six.add_metaclass(ControllerMetaclass)
@@ -1162,6 +1208,33 @@ class Controller(object):
                 return False
 
         return is_dict(body[entity_name])
+
+    @classmethod
+    def version(cls, base, max=None):
+        def decorator(f):
+            f.multi_version = True
+            f.base_version  = base
+            f.max_version = max if max else base
+            return f
+        return decorator
+
+    def __getattr__(self, key):
+        if key in self.multi_version_funcs:
+
+            def multi_version_helper(*args, **kwargs):
+                if len(args) == 0:
+                    req = kwargs['req']
+                else:
+                    req = args[0]
+                funcs = self.funcs_dict[key]
+                for func in funcs:
+                    if _version_in_range(func, req.version):
+                        return func(self, *args, **kwargs)
+                raise webob.exc.HTTPNotFound(explanation=_(
+                    "The version %s doesn't support") % req.version)
+            return multi_version_helper
+
+        return super(Controller, self).__getattr__(self, key)
 
 
 class Fault(webob.exc.HTTPException):
