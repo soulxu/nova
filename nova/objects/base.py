@@ -731,3 +731,58 @@ def serialize_args(fn):
     wrapper.original_fn = fn
     return (functools.wraps(fn)(wrapper) if hasattr(fn, '__call__')
             else classmethod(wrapper))
+
+
+def _is_object(schema):
+    return schema['type'] == 'object'
+
+
+class SchemaParsableObject(NovaObject):
+
+    # Maybe can move the attribute mapping 'ext:mapping' in json-schema into
+    # this. Because the ext:mapping needn't show in the json-schema. And when
+    # we have json-home, that mapping also needn't to expose to user.
+    FIELDS_MAPPING = {}
+
+    @classmethod
+    def obj_from_primitive_by_schema(cls, primitive, schema):
+        self = cls()
+        self._changed_fields = set()
+        mapping = schema['ext:mapping']
+        cls._parse_obj(self, primitive, schema, mapping)
+        unset_fields = set(self.fields.keys()) - self._changed_fields
+        for f in unset_fields:
+            if cls.fields[f].default != fields.UnspecifiedDefault:
+                setattr(self, f,
+                        cls.fields[f].from_primitive(self, f,
+                            cls.fields[f].default))
+        return self
+
+    def obj_to_primitive_by_schema(self, schema):
+        body = {}
+        mapping = schema['ext:mapping']
+        self._build_primitive(schema, body, mapping)
+        return body
+
+    def _build_primitive(self, schema, body, mapping):
+        for prop in schema['properties'].keys():
+            if schema['properties'][prop]['type'] == 'object':
+                body[prop] = {}
+                self._build_primitive(schema['properties'][prop], body[prop],
+                                      mapping)
+            else:
+                body[prop] = getattr(self, mapping.get(prop, prop))
+
+    @classmethod
+    def _parse_obj(cls, self, primitive, schema, mapping):
+        for property_name, property_schema in schema['properties'].items():
+            name = mapping.get(property_name, property_name)
+            if name in cls.fields and property_name in primitive:
+                # TODO (alex_xu): process the sub object
+                setattr(self, name,
+                    cls.fields[name].from_primitive(self, name,
+                        primitive[property_name]))
+                self._changed_fields.add(name)
+            elif _is_object(property_schema):
+                self._parse_obj(self, primitive[name], property_schema,
+                                mapping)
