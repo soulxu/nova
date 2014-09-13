@@ -731,3 +731,51 @@ def serialize_args(fn):
     wrapper.original_fn = fn
     return (functools.wraps(fn)(wrapper) if hasattr(fn, '__call__')
             else classmethod(wrapper))
+
+
+def _is_object(schema):
+    return schema['type'] == 'object'
+
+
+class SchemaParsableObject(NovaObject):
+
+    FIELDS_MAPPING = {}
+
+    @classmethod
+    def obj_from_primitive_by_schema(cls, primitive, schema):
+        self = cls()
+        self._changed_fields = set()
+        cls._parse_obj(self, primitive, schema)
+        unset_fields = set(self.fields.keys()) - self._changed_fields
+        for f in unset_fields:
+            if cls.fields[f].default != fields.UnspecifiedDefault:
+                setattr(self, f,
+                        cls.fields[f].from_primitive(self, f,
+                            cls.fields[f].default))
+        return self
+
+    def obj_to_primitive_by_schema(self, schema):
+        body = {}
+        self._build_primitive(schema, body)
+        return body
+
+    def _build_primitive(self, schema, body):
+        for prop in schema['properties'].keys():
+            if schema['properties'][prop]['type'] == 'object':
+                body[prop] = {}
+                self._build_primitive(schema['properties'][prop], body[prop])
+            else:
+                body[prop] = getattr(self, self.FIELDS_MAPPING.get(prop, prop))
+
+    @classmethod
+    def _parse_obj(cls, self, primitive, schema):
+        for property_name, property_schema in schema['properties'].items():
+            name = self.FIELDS_MAPPING.get(property_name, property_name)
+            if name in cls.fields and property_name in primitive:
+                # TODO (alex_xu): process the sub object
+                setattr(self, name,
+                    cls.fields[name].from_primitive(self, name,
+                        primitive[property_name]))
+                self._changed_fields.add(name)
+            elif _is_object(property_schema):
+                self._parse_obj(self, primitive[name], property_schema)

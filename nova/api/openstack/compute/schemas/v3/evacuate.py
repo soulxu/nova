@@ -15,7 +15,7 @@
 from nova.api.validation import parameter_types
 
 
-evacuate = {
+request_2_1 = {
     'type': 'object',
     'properties': {
         'evacuate': {
@@ -31,4 +31,18 @@ evacuate = {
     },
     'required': ['evacuate'],
     'additionalProperties': False,
+    'ext:mapping': {'host': 'host',
+                    'onSharedStorage': 'on_shared_storage',
+                    'adminPass': 'admin_pass'}
+}
+
+response_2_1 = {
+    'type': 'object',
+    'properties': {
+        'adminPass': {
+            'type': parameter_types.admin_password,
+        },
+    },
+    'additionalProperties': False,
+    'ext:mapping': {'adminPass': 'admin_pass'}
 }

@@ -21,7 +21,11 @@ import functools
 from validators import _SchemaValidator
 
 
-def schema(request_body_schema):
+def _get_specified_version_schema(prefix, req, schema):
+    return getattr(schema, "%s_%s" % (prefix, req.version.replace('.', '_')))
+
+
+def schema(request_body_schema=None, schema=None, request_obj_cls=None):
     """Register a schema to validate request body.
 
     Registered schema will be used for validating request body just before
@@ -30,12 +34,36 @@ def schema(request_body_schema):
     :argument dict request_body_schema: a schema to validate request body
 
     """
-    schema_validator = _SchemaValidator(request_body_schema)
 
     def add_validator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            schema_validator.validate(kwargs['body'])
-            return func(*args, **kwargs)
+            if 'req' in kwargs:
+                req = kwargs['req']
+            else:
+                req = args[1]
+            if schema:
+                request_body_schema = _get_specified_version_schema('request',
+                                                                    req,
+                                                                    schema)
+                body = kwargs.pop('body')
+            else:
+                body = kwargs['body']
+
+            schema_validator = _SchemaValidator(request_body_schema)
+            schema_validator.validate(body)
+
+            if schema:
+                request_obj = request_obj_cls.obj_from_primitive_by_schema(
+                    body, request_body_schema)
+                kwargs['param_obj'] = request_obj
+
+            ret =  func(*args, **kwargs)
+
+            if schema:
+                response_body_schema = _get_specified_version_schema(
+                    'response', req, schema)
+                return ret.obj_to_primitive_by_schema(response_body_schema)
+            return ret
         return wrapper
     return add_validator
