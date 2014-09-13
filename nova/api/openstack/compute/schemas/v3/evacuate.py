@@ -78,3 +78,36 @@ response_3_0 = {
     'additionalProperties': False,
     'ext:mapping': {'admin_pass': 'admin_pass'}
 }
+
+request_3_1 = {
+    'type': 'object',
+    'properties': {
+        'evacuate': {
+            'type': 'object',
+            'properties': {
+                'host': parameter_types.hostname,
+                'on_shared_storage': parameter_types.boolean,
+                'admin_pass': parameter_types.admin_password,
+                'fake_param': {'type': 'string'}
+            },
+            'required': ['on_shared_storage'],
+            'additionalProperties': False,
+        },
+    },
+    'required': ['evacuate'],
+    'additionalProperties': False,
+    'ext:mapping': {'host': 'host',
+                    'on_shared_storage': 'on_shared_storage',
+                    'admin_pass': 'admin_pass'}
+}
+
+response_3_1 = {
+    'type': 'object',
+    'properties': {
+        'admin_pass': {
+            'type': parameter_types.admin_password,
+        },
+    },
+    'additionalProperties': False,
+    'ext:mapping': {'admin_pass': 'admin_pass'}
+}
