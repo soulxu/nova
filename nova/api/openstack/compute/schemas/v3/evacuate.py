@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 from nova.api.validation import parameter_types
 
 
@@ -78,3 +80,9 @@ response_3_0 = {
     'additionalProperties': False,
     'ext:mapping': {'admin_pass': 'admin_pass'}
 }
+
+request_3_1 = copy.deepcopy(request_3_0)
+request_3_1['properties']['evacuate']['properties'].update(
+    {'fake_param': {'type': 'string'}})
+
+response_3_1 = response_3_0

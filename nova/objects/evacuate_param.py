@@ -17,12 +17,15 @@ from nova.objects import fields
 
 
 class EvacuateRequest(base.SchemaParsableObject):
-    VERSION = '1.0'
+    # Version 1.0: Initial version
+    # Version 1.1: Add new attribute 'fake_param'
+    VERSION = '1.1'
 
     fields = {
         'host': fields.StringField(nullable=True, default=None),
         'on_shared_storage': fields.BooleanField(),
-        'admin_pass': fields.StringField(nullable=True)
+        'admin_pass': fields.StringField(nullable=True),
+        'fake_param': fields.StringField(nullable=True, default=None)
     }
 
 
