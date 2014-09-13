@@ -24,6 +24,7 @@ from nova.api import validation
 from nova import compute
 from nova import exception
 from nova.i18n import _
+from nova import objects
 from nova.openstack.common import strutils
 from nova import utils
 
@@ -47,47 +48,44 @@ class EvacuateController(wsgi.Controller):
     @wsgi.Controller.version('2.1')
     @extensions.expected_errors((400, 404, 409))
     @wsgi.action('evacuate')
-    @validation.schema(evacuate.evacuate)
-    def _evacuate(self, req, id, body):
+    @validation.schema(schema=evacuate,
+                       request_obj_cls=objects.EvacuateRequest)
+    def _evacuate(self, req, id, param_obj):
         """Permit admins to evacuate a server from a failed host
         to a new one.
         """
         context = req.environ["nova.context"]
         authorize(context)
 
-        evacuate_body = body["evacuate"]
-        host = evacuate_body.get("host")
-        on_shared_storage = strutils.bool_from_string(
-                                        evacuate_body["onSharedStorage"])
-
         password = None
-        if 'adminPass' in evacuate_body:
+        if 'admin_pass' in param_obj:
             # check that if requested to evacuate server on shared storage
             # password not specified
-            if on_shared_storage:
+            if param_obj.on_shared_storage:
                 msg = _("admin password can't be changed on existing disk")
                 raise exc.HTTPBadRequest(explanation=msg)
 
-            password = evacuate_body['adminPass']
-        elif not on_shared_storage:
+            password = param_obj.admin_pass
+        elif not param_obj.on_shared_storage:
             password = utils.generate_password()
 
-        if host is not None:
+        if param_obj.host is not None:
             try:
-                self.host_api.service_get_by_compute_host(context, host)
+                self.host_api.service_get_by_compute_host(context,
+                                                          param_obj.host)
             except exception.NotFound:
-                msg = _("Compute host %s not found.") % host
+                msg = _("Compute host %s not found.") % param_obj.host
                 raise exc.HTTPNotFound(explanation=msg)
 
         instance = common.get_instance(self.compute_api, context, id,
                                        want_objects=True)
-        if instance.host == host:
+        if instance.host == param_obj.host:
             msg = _("The target host can't be the same one.")
             raise exc.HTTPBadRequest(explanation=msg)
 
         try:
-            self.compute_api.evacuate(context, instance, host,
-                                      on_shared_storage, password)
+            self.compute_api.evacuate(context, instance, param_obj.host,
+                                      param_obj.on_shared_storage, password)
         except exception.InstanceInvalidState as state_error:
             common.raise_http_conflict_for_instance_invalid_state(state_error,
                     'evacuate')
@@ -95,7 +93,7 @@ class EvacuateController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=e.format_message())
 
         if CONF.enable_instance_password:
-            return {'adminPass': password}
+            return objects.EvacuateResponse(admin_pass=password)
         else:
             return {}
 
