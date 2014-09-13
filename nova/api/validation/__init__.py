@@ -21,7 +21,39 @@ import functools
 from validators import _SchemaValidator
 
 
-def schema(request_body_schema):
+def _fetch_param(body, mapping, params):
+    for key in body.keys():
+        if key in mapping:
+            params[mapping[key]] = body[key]
+        elif isinstance(body[key], dict):
+            _fetch_param(body[key], mapping, params)
+
+
+def _build_body(schema, mapping, params, body):
+    for prop in schema['properties'].keys():
+        if schema['properties'][prop]['type'] == 'object':
+            body[prop] = {}
+            _build_body(schema['properties'][prop], mapping, params,
+                        body[prop])
+        else:
+            body[prop] = params[mapping[prop]]
+
+
+def _mapping_resquest(request_body_schema, body):
+    mapping = request_body_schema['ext:mapping']
+    params = {}
+    _fetch_param(body, mapping, params)
+    return params
+
+
+def _mapping_response(response_body_schema, params):
+    mapping = response_body_schema['ext:mapping']
+    body = {}
+    _build_body(response_body_schema, mapping, params, body)
+    return body
+
+
+def schema(request_body_schema=None, schema=None):
     """Register a schema to validate request body.
 
     Registered schema will be used for validating request body just before
@@ -30,12 +62,32 @@ def schema(request_body_schema):
     :argument dict request_body_schema: a schema to validate request body
 
     """
-    schema_validator = _SchemaValidator(request_body_schema)
 
     def add_validator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            schema_validator.validate(kwargs['body'])
-            return func(*args, **kwargs)
+            if len(args) == 1:
+                req = kwargs['req']
+            else:
+                req = args[1]
+            if schema:
+                request_body_schema = getattr(
+                    schema, "request_%s" % req.version.replace('.', '_'))
+                body = kwargs.pop('body')
+            else:
+                body = kwargs['body']
+            schema_validator = _SchemaValidator(request_body_schema)
+            schema_validator.validate(body)
+            if schema:
+                params = _mapping_resquest(request_body_schema, body)
+                kwargs['params'] = params
+
+            ret =  func(*args, **kwargs)
+
+            if schema:
+                response_body_schema = getattr(
+                        schema, "response_%s" % req.version.replace('.', '_'))
+                return _mapping_response(response_body_schema, ret)
+            return ret
         return wrapper
     return add_validator
