@@ -24,12 +24,14 @@ from nova.api import validation
 from nova import compute
 from nova import exception
 from nova.i18n import _
+from nova.openstack.common import log as logging
 from nova.openstack.common import strutils
 from nova import utils
 
 CONF = cfg.CONF
 CONF.import_opt('enable_instance_password',
                 'nova.api.openstack.compute.servers')
+LOG = logging.getLogger(__name__)
 
 ALIAS = "os-evacuate"
 authorize = extensions.extension_authorizer('compute', 'v3:' + ALIAS)
@@ -90,6 +92,41 @@ class EvacuateController(wsgi.Controller):
                     'evacuate')
         except exception.ComputeServiceInUse as e:
             raise exc.HTTPBadRequest(explanation=e.format_message())
+
+        if CONF.enable_instance_password:
+            return {'admin_pass': password}
+        else:
+            return {}
+
+    @wsgi.Controller.version('5.0')
+    @wsgi.response(202)
+    @extensions.expected_errors((400, 404, 409))
+    @wsgi.action('evacuate')
+    @validation.schema(schema=evacuate)
+    def _evacuate(self, req, id, params):
+        """Permit admins to evacuate a server from a failed host
+        to a new one.
+        """
+        context = req.environ["nova.context"]
+        authorize(context)
+
+        host = params.get("host")
+        on_shared_storage = strutils.bool_from_string(
+                                        params["on_shared_storage"])
+
+        password = None
+        if 'admin_pass' in params:
+            # check that if requested to evacuate server on shared storage
+            # password not specified
+            if on_shared_storage:
+                msg = _("admin password can't be changed on existing disk")
+                raise exc.HTTPBadRequest(explanation=msg)
+
+            password = params['admin_pass']
+        elif not on_shared_storage:
+            password = utils.generate_password()
+
+        LOG.warn("Fake semantic change!")
 
         if CONF.enable_instance_password:
             return {'admin_pass': password}
