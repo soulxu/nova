@@ -101,13 +101,6 @@ request_3_1 = {
                     'admin_pass': 'admin_pass'}
 }
 
-response_3_1 = {
-    'type': 'object',
-    'properties': {
-        'admin_pass': {
-            'type': parameter_types.admin_password,
-        },
-    },
-    'additionalProperties': False,
-    'ext:mapping': {'admin_pass': 'admin_pass'}
-}
+response_3_1 = response_3_0
+request_4_0 = request_3_1
+response_4_0 = response_3_1
