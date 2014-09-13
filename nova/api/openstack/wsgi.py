@@ -485,7 +485,7 @@ def deserializers(**deserializers):
     return decorator
 
 
-def response(code):
+def response(code, code_mapping=None):
     """Attaches response code to a method.
 
     This decorator associates a response code with a method.  Note
@@ -495,6 +495,10 @@ def response(code):
 
     def decorator(func):
         func.wsgi_code = code
+        if code_mapping:
+            func.code_mapping = code_mapping
+        else:
+            func.code_mapping = {OS_COMPUTE_MIN_VERSION: code}
         return func
     return decorator
 
@@ -700,6 +704,23 @@ class ResourceExceptionHandler(object):
 
         # We didn't handle the exception
         return False
+
+
+def _compare_version(version1, version2):
+    version1_parts = version1.split('.')
+    version2_parts = version2.split('.')
+
+    if int(version1_parts[0]) < int(version2_parts[0]):  # Major
+        return -1
+    if int(version1_parts[0]) > int(version2_parts[0]):  # Major
+        return 1
+    if int(version1_parts[0]) == int(version2_parts[0]):  # Major
+        if int(version1_parts[1]) < int(version2_parts[1]):
+            return -1
+        if int(version1_parts[1]) > int(version2_parts[1]):
+            return 1
+        if int(version1_parts[1]) == int(version2_parts[1]):
+            return 0
 
 
 class Resource(wsgi.Application):
@@ -999,8 +1020,20 @@ class Resource(wsgi.Application):
                 # Do a preserialize to set up the response object
                 serializers = getattr(meth, 'wsgi_serializers', {})
                 resp_obj._bind_method_serializers(serializers)
-                if hasattr(meth, 'wsgi_code'):
-                    resp_obj._default_code = meth.wsgi_code
+                if hasattr(meth, 'code_mapping'):
+                    if request.version in meth.code_mapping:
+                        resp_obj._default_code = meth.code_mapping[
+                            request.version]
+                    else:
+                        code_versions = sorted(meth.code_mapping.keys())
+                        if _compare_version(code_versions[0],
+                                            request.version) == 1:
+                            resp_obj._default_code = meth.wsgi_code
+                        elif _compare_version(code_versions[-1],
+                                              request.version) == -1:
+                            resp_obj._default_code = meth.code_mapping[
+                                code_versions[-1]]
+
                 resp_obj.preserialize(accept, self.default_serializers)
 
                 # Process post-processing extensions
@@ -1148,23 +1181,6 @@ class ControllerMetaclass(type):
 
         return super(ControllerMetaclass, mcs).__new__(mcs, name, bases,
                                                        cls_dict)
-
-
-def _compare_version(version1, version2):
-    version1_parts = version1.split('.')
-    version2_parts = version2.split('.')
-
-    if int(version1_parts[0]) < int(version2_parts[0]):  # Major
-        return -1
-    if int(version1_parts[0]) > int(version2_parts[0]):  # Major
-        return 1
-    if int(version1_parts[0]) == int(version2_parts[0]):  # Major
-        if int(version1_parts[1]) < int(version2_parts[1]):
-            return -1
-        if int(version1_parts[1]) > int(version2_parts[1]):
-            return 1
-        if int(version1_parts[1]) == int(version2_parts[1]):
-            return 0
 
 
 def _version_in_range(func, version):
