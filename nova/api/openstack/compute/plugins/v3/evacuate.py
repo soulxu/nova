@@ -41,10 +41,8 @@ class EvacuateController(wsgi.Controller):
         self.compute_api = compute.API()
         self.host_api = compute.HostAPI()
 
-    # TODO(eliqiao): Should be responding here with 202 Accept
-    # because evacuate is an async call, but keep to 200 for
-    # backwards compatibility reasons.
-    @wsgi.Controller.version('2.1', max='3.1')
+    @wsgi.Controller.version('2.1', max='4.0')
+    @wsgi.response(200, {'4.0': 202})
     @extensions.expected_errors((400, 404, 409))
     @wsgi.action('evacuate')
     @validation.schema(schema=evacuate)
