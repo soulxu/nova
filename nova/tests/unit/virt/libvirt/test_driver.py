@@ -95,6 +95,7 @@ from nova.virt.image import model as imgmodel
 from nova.virt import images
 from nova.virt.libvirt import blockinfo
 from nova.virt.libvirt import config as vconfig
+from nova.virt.libvirt import cpuinfo
 from nova.virt.libvirt import driver as libvirt_driver
 from nova.virt.libvirt import firewall
 from nova.virt.libvirt import guest as libvirt_guest
@@ -12608,7 +12609,20 @@ class LibvirtConnTestCase(test.NoDBTestCase):
         drvr = libvirt_driver.LibvirtDriver(fake.FakeVirtAPI(), False)
         self.assertEqual(0, drvr._get_disk_over_committed_size_total())
 
-    def test_cpu_info(self):
+    @mock.patch.object(cpuinfo, '_read_cpu_info')
+    def test_cpu_info(self, mock_read_cpu_info):
+        mock_read_cpu_info.return_value = [
+            'processor\t: 0\n',
+            'vendor_id\t: GenuineIntel\n',
+            'cpu family\t: 6\n',
+            'cpu MHz\t\t: 1199.000\n',
+            '\n',
+            'processor\t: 1\n',
+            'vendor_id\t: GenuineIntel\n',
+            'cpu family\t: 6\n',
+            'cpu MHz\t\t: 2299.000\n',
+            '\n']
+
         drvr = libvirt_driver.LibvirtDriver(fake.FakeVirtAPI(), True)
 
         def get_host_capabilities_stub(self):
@@ -12651,7 +12665,10 @@ class LibvirtConnTestCase(test.NoDBTestCase):
                 "model": "Opteron_G4",
                 "arch": fields.Architecture.X86_64,
                 "topology": {"cells": 1, "cores": 2, "threads": 1,
-                             "sockets": 4}}
+                             "sockets": 4},
+                "detail": [{"id": 0, "frequency": 1199.000},
+                           {"id": 1, "frequency": 2299.000}]
+                }
         got = drvr._get_cpu_info()
         self.assertEqual(want, got)
 

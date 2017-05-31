@@ -96,6 +96,7 @@ from nova.virt.image import model as imgmodel
 from nova.virt import images
 from nova.virt.libvirt import blockinfo
 from nova.virt.libvirt import config as vconfig
+from nova.virt.libvirt import cpuinfo
 from nova.virt.libvirt import firewall as libvirt_firewall
 from nova.virt.libvirt import guest as libvirt_guest
 from nova.virt.libvirt import host
@@ -5327,6 +5328,7 @@ class LibvirtDriver(driver.ComputeDriver):
         for f in caps.host.cpu.features:
             features.add(f.name)
         cpu_info['features'] = features
+        cpu_info['detail'] = cpuinfo.get_cpus_detail()
         return cpu_info
 
     def _get_pcinet_info(self, vf_address):
