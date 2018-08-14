@@ -346,7 +346,10 @@ class SchedulerReportClient(object):
             "Candidates are in either 'foo' or 'bar', but definitely in 'baz'"
 
         """
-        version = GRANULAR_AC_VERSION
+        # NOTE(gibi): claim_resources will use the this version as well so to
+        # support consumer generations we need to do the allocation candidate
+        # query with high enough version as well.
+        version = CONSUMER_GENERATION_VERSION
         qparams = resources.to_querystring()
         url = "/allocation_candidates?%s" % qparams
         resp = self.get(url, version=version,
@@ -1563,6 +1566,14 @@ class SchedulerReportClient(object):
 
     def get_allocations_for_consumer_by_provider(self, context, rp_uuid,
                                                  consumer):
+        """Return allocations for a consumer and a resource provider.
+
+        :param context: The nova.context.RequestContext auth context
+        :param rp_uuid: UUID of the resource provider
+        :param consumer: UUID of the consumer
+        :return: the resources dict of the consumer's allocation keyed by
+                 resource classes
+        """
         # NOTE(cdent): This trims to just the allocations being
         # used on this resource provider. In the future when there
         # are shared resources there might be other providers.
@@ -1630,51 +1641,94 @@ class SchedulerReportClient(object):
         :param allocation_request_version: The microversion used to request the
                                            allocations.
         :returns: True if the allocations were created, False otherwise.
+        :raise ConsumerUpdateConflict: If consumer_generation in the
+                                       alloc_request does not match with the
+                                       placement view.
         """
-        # Older clients might not send the allocation_request_version, so
-        # default to 1.10.
-        # TODO(alex_xu): In the rocky, all the client should send the
-        # allocation_request_version. So remove this default value.
-        allocation_request_version = allocation_request_version or '1.10'
         # Ensure we don't change the supplied alloc request since it's used in
         # a loop within the scheduler against multiple instance claims
         ar = copy.deepcopy(alloc_request)
-
-        # If the allocation_request_version less than 1.12, then convert the
-        # allocation array format to the dict format. This conversion can be
-        # remove in Rocky release.
-        if versionutils.convert_version_to_tuple(
-                allocation_request_version) < (1, 12):
-            ar = {
-                'allocations': {
-                    alloc['resource_provider']['uuid']: {
-                        'resources': alloc['resources']
-                    } for alloc in ar['allocations']
-                }
-            }
-            allocation_request_version = '1.12'
 
         url = '/allocations/%s' % consumer_uuid
 
         payload = ar
 
+        # We assume that this is a new consumer. If this is a move operation
+        # then consumer_generation will be set to the generation of the current
+        # consumer below.
+        consumer_generation = None
+
+        # NOTE(gibi): in general we want to raise ConsumerUpdateConflict
+        # exception if the placement returns consumer conflict to let the
+        # caller decide about retry. But in some cases claim_resources() reads
+        # the consumer generation from placement and in those case we can
+        # attempt the retry locally
+        retry_on_consumer_conflict = False
+
         # We first need to determine if this is a move operation and if so
         # create the "doubled-up" allocation that exists for the duration of
         # the move operation against both the source and destination hosts
-        r = self.get(url, global_request_id=context.global_id)
+        r = self.get(url, global_request_id=context.global_id,
+                     version=CONSUMER_GENERATION_VERSION)
         if r.status_code == 200:
-            current_allocs = r.json()['allocations']
+            body = r.json()
+            current_allocs = body['allocations']
             if current_allocs:
+                if 'consumer_generation' not in ar:
+                    # this is non-forced evacuation. Evacuation does not use
+                    # the migration.uuid to hold the source host allocation
+                    # therefore when the scheduler calls claim_resources() then
+                    # the two allocations needs to be combined. Scheduler does
+                    # not know that this is not a new consumer as it only sees
+                    # allocation candidates.
+                    # Therefore we need to user the consumer generation from
+                    # the above GET. If we fail with consumer generation
+                    # conflict then we have to retry this function only.
+                    consumer_generation = body['consumer_generation']
+                    retry_on_consumer_conflict = True
+                else:
+                    # this is forced evacuation and the caller
+                    # claim_resources_on_destination() provides the consumer
+                    # generation it sees in the conductor when generates the
+                    # request. If we fail with consumer_generation conflict
+                    # then we should let the caller handle that.
+                    consumer_generation = ar['consumer_generation']
+                    retry_on_consumer_conflict = False
                 payload = _move_operation_alloc_request(current_allocs, ar)
 
         payload['project_id'] = project_id
         payload['user_id'] = user_id
+
+        if (versionutils.convert_version_to_tuple(
+                allocation_request_version) >=
+                versionutils.convert_version_to_tuple(
+                    CONSUMER_GENERATION_VERSION) and
+                'consumer_generation' not in payload):
+            payload['consumer_generation'] = consumer_generation
+
         r = self.put(url, payload, version=allocation_request_version,
                      global_request_id=context.global_id)
         if r.status_code != 204:
             # NOTE(jaypipes): Yes, it sucks doing string comparison like this
             # but we have no error codes, only error messages.
-            if 'concurrently updated' in r.text:
+            if 'consumer generation conflict' in r.text:
+                reason = ('another process changed the consumer %s after '
+                          'the report client read the consumer state '
+                          'during the claim ' % consumer_uuid)
+                exc = exception.AllocationUpdateFailed(
+                    consumer_uuid=consumer_uuid, error=reason)
+                if retry_on_consumer_conflict:
+                    raise Retry(
+                        'claim_resources',
+                        reason,
+                        raise_if_no_more_retry=exc)
+                else:
+                    raise exc
+            elif 'generation conflict' in r.text:
+                # this is not a consumer generation conflict so it can only be
+                # a resource provider generation conflict. The caller does not
+                # provide resource provider generation so this is just a
+                # placement internal race. We can blindly retry locally.
                 reason = ('another process changed the resource providers '
                           'involved in our attempt to put allocations for '
                           'consumer %s' % consumer_uuid)

@@ -4267,3 +4267,1008 @@ class ServerTestV256RescheduleTestCase(ServerTestV256Common):
         found_server = self.api.get_server(server['id'])
         # Check that rescheduling is not occurred.
         self.assertNotEqual(other_host, found_server['OS-EXT-SRV-ATTR:host'])
+
+
+class ConsumerGenerationConflictTest(
+        integrated_helpers.ProviderUsageBaseTestCase):
+
+    # we need the medium driver to be able to allocate resource not just for
+    # a single instance
+    compute_driver = 'fake.MediumFakeDriver'
+
+    def setUp(self):
+        super(ConsumerGenerationConflictTest, self).setUp()
+        flavors = self.api.get_flavors()
+        self.flavor = flavors[0]
+        self.other_flavor = flavors[1]
+        self.compute1 = self._start_compute('compute1')
+        self.compute2 = self._start_compute('compute2')
+
+    def test_create_server_fails_as_placement_reports_consumer_conflict(self):
+        server_req = self._build_minimal_create_server_request(
+            self.api, 'some-server', flavor_id=self.flavor['id'],
+            image_uuid='155d900f-4e14-4e4c-a73d-069cbf4541e6',
+            networks='none')
+
+        # We cannot pre-create a consumer with the uuid of the instance created
+        # below as that uuid is generated. Instead we have to simulate that
+        # Placement returns 409, consumer generation conflict for the PUT
+        # /allocation request the scheduler does for the instance.
+        with mock.patch('keystoneauth1.adapter.Adapter.put') as mock_put:
+            rsp = mock.Mock()
+            rsp.status_code = 409
+            rsp.text = 'consumer generation conflict'
+            mock_put.return_value = rsp
+
+            created_server = self.api.post_server({'server': server_req})
+            server = self._wait_for_state_change(
+                self.admin_api, created_server, 'ERROR')
+
+        # This is not a conflict that the API user can ever resolve. It is a
+        # serious inconsistency in our database or a bug in the scheduler code
+        # doing the claim.
+        self.assertEqual(500, server['fault']['code'])
+        self.assertIn('Failed to update allocations for consumer',
+                      server['fault']['message'])
+
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertEqual(0, len(allocations))
+
+        self._delete_and_check_allocations(server)
+
+    def test_migrate_claim_on_dest_fails(self):
+        extra_rp = self._post_resource_provider(
+            rp_name='non_nova_managed_provider')
+
+        # use DISK_GB for simplicity
+        inv = {"resource_class": "DISK_GB",
+               "total": 78, "reserved": 0, "min_unit": 1, "max_unit": 78,
+               "step_size": 1, "allocation_ratio": 1.0}
+        self._set_inventory(extra_rp['uuid'], inv)
+
+        # in reality the new provider would need to share resources with the
+        # compute provider via aggregate but for our error case that is not
+        # really needed
+
+        server = self._boot_and_check_allocations(
+            self.flavor, self.compute1.host)
+
+        # The scheduler will use the instance uuid as consumer on the dest
+        # host during the claim. The test can force a conflict by creating
+        # such consumer _after_ the source allocation is moved from the
+        # instance to the migration uuid
+        orig_post = adapter.Adapter.post
+
+        def dirty_post(_self, url, **kwargs):
+            rsp = orig_post(_self, url, **kwargs)
+            # this is the call that nova does to move allocations from instance
+            # to migration uuid
+            if url == '/allocations':
+                # simulate that some other process made an allocation with the
+                # instance uuid consumer after the move as the current move
+                # implementation moves everything
+                kwargs.pop('json')
+                orig_post(
+                    _self, url,
+                    json={server['id']:
+                              {'consumer_generation': None,
+                               'user_id': uuids.user_id,
+                               'project_id': uuids.project_id,
+                               'allocations': {
+                                   extra_rp['uuid']: {
+                                       'resources': {'DISK_GB': 1}}}}},
+                    **kwargs)
+            return rsp
+
+        with mock.patch('keystoneauth1.adapter.Adapter.post',
+                        autospec=True) as mock_post:
+            mock_post.side_effect = dirty_post
+
+            request = {'migrate': None}
+            self.api.post_server_action(server['id'], request)
+            # The migration should be aborted but it does not happen today
+            # as the claim_resources() checks if there is allocation for the
+            # instance consumer to detect if this is an evacuation case and
+            # in our test case it _thinks_ it is an evacuation :/
+            # server = self.api.get_server(server['id'])
+            # self.assertEqual('ACTIVE', server['status'])
+            # self.assertEqual(source_host, server['OS-EXT-SRV-ATTR:host'])
+            self._wait_for_state_change(self.api, server, 'VERIFY_RESIZE')
+
+        self._delete_and_check_allocations(server)
+
+    def test_migrate_claim_on_dest_fails_2(self):
+        # We need this more hackis simulation of the conflict case as the
+        # above bit more realistic one fails because
+        # reportclient.claim_resources try to be smart and falsely thinks that
+        # our migration is an evacuation case
+        source_hostname = self.compute1.host
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+
+        server = self._boot_and_check_allocations(self.flavor, source_hostname)
+
+        # We have to simulate that Placement returns 409, consumer generation
+        # conflict for the PUT /allocation request the scheduler does on the
+        # destination host for the instance.
+        with mock.patch('keystoneauth1.adapter.Adapter.put') as mock_put:
+            rsp = mock.Mock()
+            rsp.status_code = 409
+            rsp.text = 'consumer generation conflict'
+            mock_put.return_value = rsp
+
+            request = {'migrate': None}
+            exception = self.assertRaises(client.OpenStackApiException,
+                                          self.api.post_server_action,
+                                          server['id'], request)
+
+        # I know that HTTP 500 is harsh code but I think this conflict case
+        # signals either a serious db inconsistency or a bug in nova's
+        # claim code.
+        self.assertEqual(500, exception.response.status_code)
+
+        # The migration is aborted so the instance is ACTIVE on the source
+        # host instead of being in VERIFY_RESIZE state.
+        server = self.api.get_server(server['id'])
+        self.assertEqual('ACTIVE', server['status'])
+        self.assertEqual(source_hostname, server['OS-EXT-SRV-ATTR:host'])
+
+        source_usages = self._get_provider_usages(source_rp_uuid)
+        self.assertFlavorMatchesAllocation(self.flavor, source_usages)
+
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertEqual(1, len(allocations))
+        alloc = allocations[source_rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, alloc)
+
+        self._delete_and_check_allocations(server)
+
+    def test_migrate_move_allocation_retry_success(self):
+        """At the start of a migration the allocation on the source host held
+        by the instance.uuid is moved to the migration.uuid. This test verfies
+        that such move operation is retried in case of consumer generation
+        conflict.
+        """
+        source_hostname = self.compute1.host
+        dest_hostname = self.compute2.host
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+        dest_rp_uuid = self._get_provider_uuid_by_host(dest_hostname)
+
+        server = self._boot_and_check_allocations(self.flavor, source_hostname)
+
+        # The reportclient does 3 retries after a conflict so make the first
+        # call and two subsequent retries fail with consumer conflict and let
+        # the third (and last) retry succeed. We expect a successful migration
+        # in this case
+        orig_post = adapter.Adapter.post
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+        results = [rsp, rsp, rsp]
+
+        def fake_post(_self, url, **kwargs):
+            if url == '/allocations':
+                return results.pop(0) if results else orig_post(_self, url,
+                                                                **kwargs)
+        with mock.patch('keystoneauth1.adapter.Adapter.post',
+                        autospec=True) as mock_post:
+            mock_post.side_effect = fake_post
+
+            self._migrate_and_check_allocations(
+                server, self.flavor, source_rp_uuid, dest_rp_uuid)
+
+            # 1 regular call + 2 failed retry + 1 succeeded retry
+            self.assertEqual(4, mock_post.call_count)
+
+        self._delete_and_check_allocations(server)
+
+    def test_migrate_move_allocation_retry_fails(self):
+        source_hostname = self.compute1.host
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+
+        server = self._boot_and_check_allocations(self.flavor, source_hostname)
+
+        # The reportclient does 3 retries after a conflict so make the first
+        # call and three subsequent retries fail with consumer conflict We
+        # expect a failed migration in this case
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+
+        with mock.patch('keystoneauth1.adapter.Adapter.post',
+                        autospec=True) as mock_post:
+            mock_post.side_effect = [rsp, rsp, rsp, rsp]
+
+            request = {'migrate': None}
+            exception = self.assertRaises(client.OpenStackApiException,
+                                          self.api.post_server_action,
+                                          server['id'], request)
+
+        self.assertEqual(4, mock_post.call_count)
+
+        # TODO(gibi): Should this be 409 instead? Nova got 409 due to parallel
+        # consumer update and already retried 3 times so this operation can be
+        # retried therefore in theory if the API user retries later this
+        # operation might succeed
+        self.assertEqual(500, exception.response.status_code)
+        # TODO(gibi): If the error code is change to 409 then this will also
+        # be something more descriptive
+        self.assertIn('Unexpected API Error.', exception.response.text)
+
+        # The migration is aborted so the instance is ACTIVE on the source
+        # host instead of being in VERIFY_RESIZE state.
+        server = self.api.get_server(server['id'])
+        self.assertEqual('ACTIVE', server['status'])
+        self.assertEqual(source_hostname, server['OS-EXT-SRV-ATTR:host'])
+
+        source_usages = self._get_provider_usages(source_rp_uuid)
+        self.assertFlavorMatchesAllocation(self.flavor, source_usages)
+
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertEqual(1, len(allocations))
+        alloc = allocations[source_rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, alloc)
+
+        self._delete_and_check_allocations(server)
+
+    def test_confirm_migrate_delete_alloc_on_source_retry_success(self):
+        """When a migration is confirmed by the API user nova deletes the
+        source host allocation held by the migration. This test verifies that
+        such delete is retried successfully in case of consumer generation
+        conflict.
+        """
+        source_hostname = self.compute1.host
+        dest_hostname = self.compute2.host
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+        dest_rp_uuid = self._get_provider_uuid_by_host(dest_hostname)
+
+        server = self._boot_and_check_allocations(self.flavor, source_hostname)
+        self._migrate_and_check_allocations(
+            server, self.flavor, source_rp_uuid, dest_rp_uuid)
+
+        migration_uuid = self.get_migration_uuid_for_instance(server['id'])
+
+        # The reportclient does 3 retries after a conflict so make the first
+        # the third (and last) retry succeed. We expect a successful migration
+        # in this case
+        orig_put = adapter.Adapter.put
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+        results = [rsp, rsp, rsp]
+
+        def fake_put(_self, url, **kwargs):
+            if url == '/allocations/%s' % migration_uuid:
+                return results.pop(0) if results else orig_put(_self, url,
+                                                               **kwargs)
+        with mock.patch('keystoneauth1.adapter.Adapter.put',
+                        autospec=True) as mock_put:
+            mock_put.side_effect = fake_put
+
+            post = {'confirmResize': None}
+            self.api.post_server_action(
+                server['id'], post, check_response_status=[204])
+            # we have to give more time to nova to reach ACTIVE state as nova
+            # also needs to retry the delete allocation and that takes time.
+            self._wait_for_state_change(self.api, server, 'ACTIVE',
+                                        max_retries=20)
+
+        # 1 regular call + 2 failed retry + 1 succeeded retry
+        self.assertEqual(4, mock_put.call_count)
+
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertEqual(1, len(allocations))
+
+        source_usages = self._get_provider_usages(source_rp_uuid)
+        dest_usages = self._get_provider_usages(dest_rp_uuid)
+
+        self.assertFlavorMatchesAllocation(self.flavor, dest_usages)
+        self.assertEqual({'VCPU': 0,
+                          'MEMORY_MB': 0,
+                          'DISK_GB': 0}, source_usages,
+                         'The source host %s still has usages after the '
+                         'resize has been confirmed' % source_hostname)
+
+        dest_allocation = allocations[dest_rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, dest_allocation)
+
+        self._delete_and_check_allocations(server)
+
+    def test_confirm_migrate_delete_alloc_on_source_retry_fails(self):
+        source_hostname = self.compute1.host
+        dest_hostname = self.compute2.host
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+        dest_rp_uuid = self._get_provider_uuid_by_host(dest_hostname)
+
+        server = self._boot_and_check_allocations(self.flavor, source_hostname)
+        self._migrate_and_check_allocations(
+            server, self.flavor, source_rp_uuid, dest_rp_uuid)
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+
+        with mock.patch('keystoneauth1.adapter.Adapter.put',
+                        autospec=True) as mock_put:
+            mock_put.return_value = rsp
+
+            post = {'confirmResize': None}
+            self.api.post_server_action(
+                server['id'], post, check_response_status=[204])
+            # we have to give more time to nova to reach ACTIVE state as nova
+            # also needs to retry the delete allocation and that takes time.
+            # TODO(gibi): we could make this fault put the instance back to
+            # VERIFY_RESIZE and allow the user to retry the confirmResize call
+            server = self._wait_for_state_change(self.api, server, 'ERROR',
+                                                 max_retries=20)
+            self.assertEqual(500, server['fault']['code'])
+            self.assertIn('Failed to delete allocations',
+                          server['fault']['message'])
+
+        # 1 regular call + 3 failed retry
+        self.assertEqual(4, mock_put.call_count)
+
+        # TODO(gibi): After delete we still leak the source host allocation
+        # self._delete_and_check_allocations(server)
+
+    def test_revert_migrate_delete_dest_allocation_retry_success(self):
+        """When a migration is reverted the allocation on the destination host
+        held by the instance.uuid needs to be deleted and the allocation held
+        by the migration.uuid on the source host needs to be moved to the
+        instance.uuid consumer. This test verifies that if such move operation
+        fails due to consumer conflict the it is retried.
+        """
+        source_hostname = self.compute1.host
+        dest_hostname = self.compute2.host
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+        dest_rp_uuid = self._get_provider_uuid_by_host(dest_hostname)
+
+        server = self._boot_and_check_allocations(self.flavor, source_hostname)
+        self._migrate_and_check_allocations(
+            server, self.flavor, source_rp_uuid, dest_rp_uuid)
+
+        migration_uuid = self.get_migration_uuid_for_instance(server['id'])
+        allocations = self._get_allocations_by_server_uuid(migration_uuid)
+
+        # The reportclient does 3 retries after a conflict so make the first
+        # call and two subsequent retries fail with consumer conflict and let
+        # the third (and last) retry succeed. We expect a successful migration
+        # in this case
+        orig_post = adapter.Adapter.post
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+        results = [rsp, rsp, rsp]
+
+        def fake_post(_self, url, **kwargs):
+            if url == '/allocations':
+                return results.pop(0) if results else orig_post(_self, url,
+                                                                **kwargs)
+        with mock.patch('keystoneauth1.adapter.Adapter.post',
+                        autospec=True) as mock_post:
+            mock_post.side_effect = fake_post
+
+            post = {'revertResize': None}
+            self.api.post_server_action(server['id'], post)
+            # we have to give more time to nova to reach ACTIVE state as nova
+            # also needs to retry the delete allocation and that takes time.
+            self._wait_for_state_change(self.api, server, 'ACTIVE',
+                                        max_retries=20)
+
+        # 1 regular call + 2 failed retry + 1 succeeded retry
+        self.assertEqual(4, mock_post.call_count)
+
+        source_usages = self._get_provider_usages(source_rp_uuid)
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertFlavorMatchesAllocation(self.flavor, source_usages)
+
+        dest_usages = self._get_provider_usages(dest_rp_uuid)
+        self.assertEqual({'VCPU': 0,
+                          'MEMORY_MB': 0,
+                          'DISK_GB': 0}, dest_usages,
+                         'Target host %s still has usage after the '
+                         'resize has been reverted' % dest_hostname)
+
+        self.assertEqual(1, len(allocations))
+
+        source_allocation = allocations[source_rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, source_allocation)
+
+        self._delete_and_check_allocations(server)
+
+    def test_revert_migrate_delete_dest_allocation_retry_fails(self):
+        source_hostname = self.compute1.host
+        dest_hostname = self.compute2.host
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+        dest_rp_uuid = self._get_provider_uuid_by_host(dest_hostname)
+
+        server = self._boot_and_check_allocations(self.flavor, source_hostname)
+        self._migrate_and_check_allocations(
+            server, self.flavor, source_rp_uuid, dest_rp_uuid)
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+
+        with mock.patch('keystoneauth1.adapter.Adapter.post',
+                        autospec=True) as mock_post:
+            mock_post.return_value = rsp
+
+            post = {'revertResize': None}
+            self.api.post_server_action(server['id'], post)
+            # we have to give more time to nova to reach ERROR state as nova
+            # also needs to retry the delete allocation and that takes time.
+            # TODO(gibi): Nova failed to revert the migration. Nova could keep
+            # the instance in VERIFY_RESIZE and let the user retry the revert
+            # later.
+            server = self._wait_for_state_change(self.api, server, 'ERROR',
+                                                 max_retries=20)
+        # if we change the above ERROR state to VERIFY_RESIZE then this should
+        # be 409 instead
+        self.assertEqual(500, server['fault']['code'])
+
+        # 1 regular call + 3 failed retry
+        self.assertEqual(4, mock_post.call_count)
+
+        # We are in ERROR state so allocations are still in limbo we at least
+        # need to make sure that when the instance is deleted we are not
+        # leaking any allocations
+        # TODO(gibi): delete does not remove the allocation held by the
+        # migration so we are leaking allocations here :/
+        # self._delete_and_check_allocations(server)
+
+    def test_revert_resize_same_host_delete_dest_retry_success(self):
+        # make sure that the test only uses a single host
+        compute2_service_id = self.admin_api.get_services(
+            host=self.compute2.host, binary='nova-compute')[0]['id']
+        self.admin_api.put_service(compute2_service_id, {'status': 'disabled'})
+
+        hostname = self.compute1.manager.host
+        rp_uuid = self._get_provider_uuid_by_host(hostname)
+
+        server = self._boot_and_check_allocations(self.flavor, hostname)
+
+        self._resize_to_same_host_and_check_allocations(
+            server, self.flavor, self.other_flavor, rp_uuid)
+
+        orig_post = adapter.Adapter.post
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+        results = [rsp, rsp, rsp]
+
+        def fake_post(_self, url, **kwargs):
+            if url == '/allocations':
+                return results.pop(0) if results else orig_post(_self, url,
+                                                                **kwargs)
+        with mock.patch('keystoneauth1.adapter.Adapter.post',
+                        autospec=True) as mock_post:
+            mock_post.side_effect = fake_post
+
+            post = {'revertResize': None}
+            self.api.post_server_action(server['id'], post)
+            self._wait_for_state_change(self.api, server, 'ACTIVE',
+                                        max_retries=20)
+
+        # 1 regular call + 2 failed retry + 1 successful retry
+        self.assertEqual(4, mock_post.call_count)
+
+        usages = self._get_provider_usages(rp_uuid)
+        self.assertFlavorMatchesAllocation(self.flavor, usages)
+
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertEqual(1, len(allocations))
+        allocation = allocations[rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, allocation)
+
+        self._delete_and_check_allocations(server)
+
+    def test_revert_resize_same_host_delete_dest_retry_fails(self):
+        # make sure that the test only uses a single host
+        compute2_service_id = self.admin_api.get_services(
+            host=self.compute2.host, binary='nova-compute')[0]['id']
+        self.admin_api.put_service(compute2_service_id, {'status': 'disabled'})
+
+        hostname = self.compute1.manager.host
+        rp_uuid = self._get_provider_uuid_by_host(hostname)
+
+        server = self._boot_and_check_allocations(self.flavor, hostname)
+
+        self._resize_to_same_host_and_check_allocations(
+            server, self.flavor, self.other_flavor, rp_uuid)
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+        with mock.patch('keystoneauth1.adapter.Adapter.post',
+                        autospec=True) as mock_post:
+            mock_post.return_value = rsp
+
+            post = {'revertResize': None}
+            self.api.post_server_action(server['id'], post)
+            # TODO(gibi): Nova failed to revert the resize. Nova could keep
+            # the instance in VERIFY_RESIZE and let the user retry the revert
+            # later.
+            server = self._wait_for_state_change(self.api, server, 'ERROR',
+                                                 max_retries=20)
+
+        # 1 regular call + 2 failed retry + 1 successful retry
+        self.assertEqual(4, mock_post.call_count)
+
+        # if we change the above ERROR state to VERIFY_RESIZE then this should
+        # be 409 instead
+        self.assertEqual(500, server['fault']['code'])
+
+        # We are in ERROR state so allocations are still in limbo we at least
+        # need to make sure that when the instance is deleted we are not
+        # leaking any allocations
+        # TODO(gibi): delete does not remove the allocation held by the
+        # migration so we are leaking allocations here :/
+        # self._delete_and_check_allocations(server)
+
+    # NOTE(gibi): confirm resize same host takes the same code path that
+    # confirm migrate so no separate test is added
+
+    def test_force_live_migrate_claim_on_dest_fails(self):
+        # Normal live migrate moves source allocation from instance to
+        # migration like a normal migrate.
+        # Normal live migrate claims on dest like a normal boot.
+        source_hostname = self.compute1.host
+        dest_hostname = self.compute2.host
+
+        server = self._boot_and_check_allocations(
+            self.flavor, source_hostname)
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+        with mock.patch('keystoneauth1.adapter.Adapter.put',
+                        autospec=True) as mock_put:
+            mock_put.return_value = rsp
+
+            post = {
+                'os-migrateLive': {
+                    'host': dest_hostname,
+                    'block_migration': True,
+                    'force': True,
+                }
+            }
+
+            self.api.post_server_action(server['id'], post)
+            server = self._wait_for_state_change(self.api, server, 'ERROR')
+
+        # no retry was made
+        self.assertEqual(1, mock_put.call_count)
+
+        # This is not a conflict that the API user can ever resolve. It is a
+        # serious inconsistency in our database or a bug in the scheduler code
+        # doing the claim.
+        self.assertEqual(500, server['fault']['code'])
+        # The instance is in ERROR state so the allocations are in limbo but
+        # at least we expect that when the instance is deleted the allocations
+        # are cleaned up properly.
+        self._delete_and_check_allocations(server)
+
+    def test_live_migrate_drop_allocation_on_source_retry_success(self):
+        source_hostname = self.compute1.host
+        dest_hostname = self.compute2.host
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+        dest_rp_uuid = self._get_provider_uuid_by_host(dest_hostname)
+
+        server = self._boot_and_check_allocations(
+            self.flavor, source_hostname)
+
+        fake_notifier.stub_notifier(self)
+        self.addCleanup(fake_notifier.reset)
+
+        orig_put = adapter.Adapter.put
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+        results = [rsp, rsp, rsp]
+
+        def fake_put(_self, url, *args, **kwargs):
+            migration_uuid = self.get_migration_uuid_for_instance(server['id'])
+            if url == '/allocations/%s' % migration_uuid:
+                return results.pop(0) if results else orig_put(
+                    _self, url, *args, **kwargs)
+            else:
+                return orig_put(_self, url, *args, **kwargs)
+
+        with mock.patch('keystoneauth1.adapter.Adapter.put',
+                        autospec=True) as mock_put:
+            mock_put.side_effect = fake_put
+
+            post = {
+                'os-migrateLive': {
+                    'host': dest_hostname,
+                    'block_migration': True,
+                    'force': True,
+                }
+            }
+            self.api.post_server_action(server['id'], post)
+
+            # nova does the source host cleanup _after_ setting the migration
+            # to completed and sending end notifications so we have to wait
+            # here a bit. Note that current retry implementation waits maximum
+            # 12 seconds altogether. Alternatively we could try to wait for the
+            # source allocation to disappear instead.
+            time.sleep(15)
+
+            server = self._wait_for_server_parameter(self.api, server,
+                {'OS-EXT-SRV-ATTR:host': dest_hostname,
+                 'status': 'ACTIVE'})
+            self._wait_for_migration_status(server, ['completed'])
+            fake_notifier.wait_for_versioned_notifications(
+                'instance.live_migration_post.end')
+
+        # 1 claim on destination, 1 normal delete on dest that fails,
+        # 2 failed retry, 1 successful retry
+        self.assertEqual(5, mock_put.call_count)
+
+        source_usages = self._get_provider_usages(source_rp_uuid)
+        self.assertEqual({'VCPU': 0,
+                          'MEMORY_MB': 0,
+                          'DISK_GB': 0}, source_usages,
+                         'Source host %s still has usage after the '
+                         'live migration has been finished' % source_hostname)
+
+        dest_usages = self._get_provider_usages(dest_rp_uuid)
+        self.assertFlavorMatchesAllocation(self.flavor, dest_usages)
+
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertEqual(1, len(allocations))
+        self.assertNotIn(source_rp_uuid, allocations)
+        dest_allocation = allocations[dest_rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, dest_allocation)
+
+        self._delete_and_check_allocations(server)
+
+    def test_live_migrate_drop_allocation_on_source_retry_fails(self):
+        source_hostname = self.compute1.host
+        dest_hostname = self.compute2.host
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+        dest_rp_uuid = self._get_provider_uuid_by_host(dest_hostname)
+
+        server = self._boot_and_check_allocations(
+            self.flavor, source_hostname)
+
+        fake_notifier.stub_notifier(self)
+        self.addCleanup(fake_notifier.reset)
+
+        orig_put = adapter.Adapter.put
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+
+        def fake_put(_self, url, *args, **kwargs):
+            migration_uuid = self.get_migration_uuid_for_instance(server['id'])
+            if url == '/allocations/%s' % migration_uuid:
+                return rsp
+            else:
+                return orig_put(_self, url, *args, **kwargs)
+
+        with mock.patch('keystoneauth1.adapter.Adapter.put',
+                        autospec=True) as mock_put:
+            mock_put.side_effect = fake_put
+
+            post = {
+                'os-migrateLive': {
+                    'host': dest_hostname,
+                    'block_migration': True,
+                    'force': True,
+                }
+            }
+
+            self.api.post_server_action(server['id'], post)
+
+            # nova does the source host cleanup _after_ setting the migration
+            # to completed and sending end notifications so we have to wait
+            # here a bit. Note that current retry implementation waits maximum
+            # 12 seconds altogether.
+            time.sleep(15)
+
+            # Nova failed to clean up on the source host. This right now puts
+            # the instance to ERROR state and fails the migration.
+            # However from the end user perspective the live migrations
+            # finished successfully.
+            # TODO(gibi): agree on if this ERROR state is the valid thing to do
+            # or not
+            server = self._wait_for_server_parameter(self.api, server,
+                {'OS-EXT-SRV-ATTR:host': dest_hostname,
+                 'status': 'ERROR'})
+            self._wait_for_migration_status(server, ['error'])
+            fake_notifier.wait_for_versioned_notifications(
+                'instance.live_migration_post.end')
+
+        # 1 claim on destination, 1 normal delete on dest that fails,
+        # 2 failed retry, 1 successful retry
+        self.assertEqual(5, mock_put.call_count)
+
+        source_usages = self._get_provider_usages(source_rp_uuid)
+        # As the cleanup on the source host failed Nova leaks the allocation
+        # held by the migration.
+        # TODO(gibi): fix it
+        self.assertFlavorMatchesAllocation(self.flavor, source_usages)
+        migration_uuid = self.get_migration_uuid_for_instance(server['id'])
+        allocations = self._get_allocations_by_server_uuid(migration_uuid)
+        self.assertEqual(1, len(allocations))
+        self.assertIn(source_rp_uuid, allocations)
+        source_allocation = allocations[source_rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, source_allocation)
+
+        dest_usages = self._get_provider_usages(dest_rp_uuid)
+        self.assertFlavorMatchesAllocation(self.flavor, dest_usages)
+
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertEqual(1, len(allocations))
+        self.assertNotIn(source_rp_uuid, allocations)
+        dest_allocation = allocations[dest_rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, dest_allocation)
+
+        # TODO(gibi): Fix the leak of the migration allocation
+        # self._delete_and_check_allocations(server)
+
+    def _test_evacuate_retry_success(self, force):
+        source_hostname = self.compute1.host
+        dest_hostname = self.compute2.host
+
+        server = self._boot_and_check_allocations(
+            self.flavor, source_hostname)
+
+        source_compute_id = self.admin_api.get_services(
+            host=source_hostname, binary='nova-compute')[0]['id']
+
+        self.compute1.stop()
+        # force it down to avoid waiting for the service group to time out
+        self.admin_api.put_service(
+            source_compute_id, {'forced_down': 'true'})
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+        results = [rsp, rsp, rsp]
+
+        orig_put = adapter.Adapter.put
+
+        def fake_put(_self, url, *args, **kwargs):
+            if url == '/allocations/%s' % server['id']:
+                return results.pop(0) if results else orig_put(
+                    _self, url, *args, **kwargs)
+
+        with mock.patch('keystoneauth1.adapter.Adapter.put',
+                        autospec=True) as mock_put:
+            mock_put.side_effect = fake_put
+
+            post = {
+                'evacuate': {
+                    'force': force
+                }
+            }
+
+            if force:
+                post['evacuate']['host'] = dest_hostname
+
+            self.api.post_server_action(server['id'], post)
+            expected_params = {'OS-EXT-SRV-ATTR:host': dest_hostname,
+                               'status': 'ACTIVE'}
+            # need to give more time to nova for the retries hence the 25
+            # retries
+            server = self._wait_for_server_parameter(self.api, server,
+                                                     expected_params,
+                                                     max_retries=25)
+
+        # 1 normal claim on dest that fails, 2 failed retry, 1 successful retry
+        self.assertEqual(4, mock_put.call_count)
+
+        # Expect to have allocation and usages on both computes as the
+        # source compute is still down
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+        dest_rp_uuid = self._get_provider_uuid_by_host(dest_hostname)
+
+        source_usages = self._get_provider_usages(source_rp_uuid)
+        self.assertFlavorMatchesAllocation(self.flavor, source_usages)
+
+        dest_usages = self._get_provider_usages(dest_rp_uuid)
+        self.assertFlavorMatchesAllocation(self.flavor, dest_usages)
+
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertEqual(2, len(allocations))
+        source_allocation = allocations[source_rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, source_allocation)
+        dest_allocation = allocations[dest_rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, dest_allocation)
+
+        self._delete_and_check_allocations(server)
+
+    def test_force_evacuate_retry_success(self):
+        self._test_evacuate_retry_success(force=True)
+
+    def _test_evacuate_retry_fails(self, force):
+        source_hostname = self.compute1.host
+        dest_hostname = self.compute2.host
+
+        server = self._boot_and_check_allocations(
+            self.flavor, source_hostname)
+
+        source_compute_id = self.admin_api.get_services(
+            host=source_hostname, binary='nova-compute')[0]['id']
+
+        self.compute1.stop()
+        # force it down to avoid waiting for the service group to time out
+        self.admin_api.put_service(
+            source_compute_id, {'forced_down': 'true'})
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+
+        with mock.patch('keystoneauth1.adapter.Adapter.put',
+                        autospec=True) as mock_put:
+            mock_put.return_value = rsp
+            post = {
+                'evacuate': {
+                    'force': force
+                }
+            }
+            if force:
+                post['evacuate']['host'] = dest_hostname
+
+            self.api.post_server_action(server['id'], post)
+
+            # There is no way to wait for the server state as it goes to
+            # REBUILD early and stays there. The migration goes to accepted
+            # early and stays there. The last notification instance.rebuild.end
+            # also comes before the retries are finished. So we have to sleep
+            # here. Note that the current retry code waits up to 12 seconds.
+            time.sleep(15)
+            # TODO(gibi): The instance is stuck in REBUILD. This is not good
+            # at least the instance stay at the source host. Migration should
+            # should also go from accepted to error
+            expected_params = {'OS-EXT-SRV-ATTR:host': source_hostname,
+                               'status': 'REBUILD'}
+            server = self._wait_for_server_parameter(self.api, server,
+                                                     expected_params)
+
+        # 1 normal claim on dest that fails, 3 failed retry
+        self.assertEqual(4, mock_put.call_count)
+
+        # As nova failed to allocate on the dest host we only expect allocation
+        # on the source
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+        dest_rp_uuid = self._get_provider_uuid_by_host(dest_hostname)
+
+        source_usages = self._get_provider_usages(source_rp_uuid)
+        self.assertFlavorMatchesAllocation(self.flavor, source_usages)
+
+        dest_usages = self._get_provider_usages(dest_rp_uuid)
+        self.assertEqual({'VCPU': 0,
+                          'MEMORY_MB': 0,
+                          'DISK_GB': 0}, dest_usages)
+
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertEqual(1, len(allocations))
+        source_allocation = allocations[source_rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, source_allocation)
+
+        self._delete_and_check_allocations(server)
+
+    def test_force_evacuate_retry_fails(self):
+        self._test_evacuate_retry_fails(force=True)
+
+    def test_evacuate_retry_success(self):
+        self._test_evacuate_retry_success(force=False)
+
+    def test_evacuate_retry_fails(self):
+        self._test_evacuate_retry_fails(force=False)
+
+    def test_server_delete_retry_success(self):
+        source_hostname = self.compute1.host
+
+        server = self._boot_and_check_allocations(self.flavor, source_hostname)
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+        results = [rsp, rsp, rsp]
+
+        orig_put = adapter.Adapter.put
+
+        def fake_put(_self, url, *args, **kwargs):
+            if url == '/allocations/%s' % server['id']:
+                return results.pop(0) if results else orig_put(
+                    _self, url, *args, **kwargs)
+
+        with mock.patch('keystoneauth1.adapter.Adapter.put',
+                        autospec=True) as mock_put:
+            mock_put.side_effect = fake_put
+
+            self.api.delete_server(server['id'])
+            self._wait_until_deleted(server)
+            # NOTE(gibi): The resource allocation is deleted after the instance
+            # is destroyed in the db so wait_until_deleted might return before
+            # the resource are deleted in placement.
+            fake_notifier.wait_for_versioned_notifications(
+                'instance.delete.end')
+            # even instance.delete.end is received before the real resource
+            # delete as that is delayed by the retries
+            time.sleep(15)
+
+        # 1 normal put to delete that fails, 2 failed retry, 1 successful retry
+        self.assertEqual(4, mock_put.call_count)
+
+        for rp_uuid in [self._get_provider_uuid_by_host(hostname)
+                        for hostname in self.computes.keys()]:
+            usages = self._get_provider_usages(rp_uuid)
+            self.assertEqual({'VCPU': 0,
+                              'MEMORY_MB': 0,
+                              'DISK_GB': 0}, usages)
+
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertEqual(0, len(allocations))
+
+    def test_server_delete_retry_fails(self):
+        source_hostname = self.compute1.host
+
+        server = self._boot_and_check_allocations(self.flavor, source_hostname)
+
+        rsp = mock.Mock()
+        rsp.status_code = 409
+        rsp.text = 'consumer generation conflict'
+
+        with mock.patch('keystoneauth1.adapter.Adapter.put',
+                        autospec=True) as mock_put:
+            mock_put.return_value = rsp
+
+            self.api.delete_server(server['id'])
+            self._wait_until_deleted(server)
+            # NOTE(gibi): The resource allocation is deleted after the instance
+            # is destroyed in the db so wait_until_deleted might return before
+            # the resource are deleted in placement.
+            fake_notifier.wait_for_versioned_notifications(
+                'instance.delete.end')
+            # even instance.delete.end is received before the real resource
+            # delete as that is delayed by the retries
+            time.sleep(15)
+
+        # 1 normal put to delete that fails, 3 failed retry
+        self.assertEqual(4, mock_put.call_count)
+
+        # TODO(gibi): server is marked deleted  but the allocations are not
+        # deleted. It would be better to put the instance into ERROR state
+        # instead.
+        servers = self.api.get_servers(
+            detail=True, search_opts={'deleted': True})
+        server = servers[0]
+        self.assertEqual('DELETED', server['status'])
+
+        source_rp_uuid = self._get_provider_uuid_by_host(source_hostname)
+        source_usages = self._get_provider_usages(source_rp_uuid)
+        self.assertFlavorMatchesAllocation(self.flavor, source_usages)
+
+        allocations = self._get_allocations_by_server_uuid(server['id'])
+        self.assertEqual(1, len(allocations))
+        source_allocation = allocations[source_rp_uuid]['resources']
+        self.assertFlavorMatchesAllocation(self.flavor, source_allocation)
+
+    def test_ironic_periodic_allocation_heal_retry_success(self):
+        # Based on nova/virt/ironic/driver.py#L145-L149
+        #
+        #   requires_allocation_refresh = True
+        #
+        # the Ironic virt driver still uses allocation healing in the resource
+        # tracker. This eventually calls _allocate_for_instance in the report
+        # client that does local retry for consumer generation conflict and it
+        # might fail with a AllocationUpdateFailed exception if runs out of
+        # retries.
+
+        # TODO(gibi): Can we drop this from Ironic now in Stein?
+        pass
+
+    def test_ironic_periodic_allocation_heal_retry_fails(self):
+        pass

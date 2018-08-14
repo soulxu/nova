@@ -16,8 +16,10 @@
 
 import collections
 import functools
+import random
 import re
 import sys
+import time
 
 from oslo_log import log as logging
 import oslo_messaging as messaging
@@ -469,11 +471,48 @@ def resources_from_request_spec(spec_obj):
     return res_req
 
 
+# TODO(gibi): Retry and retries are a copy of the similar code from
+# reportclient. Move this code to a common place.
+class Retry(Exception):
+    def __init__(self, operation, reason, raise_if_no_more_retry=None):
+        self.operation = operation
+        self.reason = reason
+        self.exception = raise_if_no_more_retry
+
+
+def retries(f):
+    """Decorator to retry a call three times if it raises Retry
+
+    Note that this returns the actual value of the inner call on success
+    or returns False if all the retries fail.
+    """
+    @functools.wraps(f)
+    def wrapper(self, *a, **k):
+        exc_to_be_raised = None
+        for retry in range(0, 4):
+            try:
+                sleep_time = random.uniform(0, retry * 2)
+                time.sleep(sleep_time)
+                return f(self, *a, **k)
+            except Retry as e:
+                exc_to_be_raised = e.exception
+                LOG.debug(
+                    'Unable to %(op)s because %(reason)s; retrying...',
+                    {'op': e.operation, 'reason': e.reason})
+        LOG.error('Failed scheduler client operation %s: out of retries',
+                  f.__name__)
+        if exc_to_be_raised:
+            raise exc_to_be_raised
+        else:
+            return False
+    return wrapper
+
+
 # TODO(mriedem): Remove this when select_destinations() in the scheduler takes
 # some sort of skip_filters flag.
 def claim_resources_on_destination(
         context, reportclient, instance, source_node, dest_node,
-        source_node_allocations=None):
+        source_node_allocations=None, consumer_generation=None):
     """Copies allocations from source node to dest node in Placement
 
     Normally the scheduler will allocate resources on a chosen destination
@@ -495,27 +534,80 @@ def claim_resources_on_destination(
     :raises NoValidHost: If the allocation claim on the destination
                          node fails.
     """
+
+    result = _claim_resources_on_destination_with_retry(
+        context, reportclient, instance, source_node, dest_node,
+        source_node_allocations, consumer_generation)
+
+    # If we run out retries then the return value will be False and we have to
+    # abort the forced evacuation as we was not able to allocate resources on
+    # the dest_node
+    if result is False:
+        reason = (_('Unable to move instance %(instance_uuid)s to '
+                    'host %(host)s. There is not enough capacity on '
+                    'the host for the instance.') %
+                  {'instance_uuid': instance.uuid,
+                   'host': dest_node.host})
+        raise exception.NoValidHost(reason=reason)
+
+
+@retries
+def _claim_resources_on_destination_with_retry(
+        context, reportclient, instance, source_node, dest_node,
+        source_node_allocations=None, consumer_generation=None):
+
     # Get the current allocations for the source node and the instance.
     if not source_node_allocations:
-        source_node_allocations = (
-            reportclient.get_allocations_for_consumer_by_provider(
-                context, source_node.uuid, instance.uuid))
+        # NOTE(gibi): This is the forced evacuate case where the caller did not
+        # provided any allocation request. So we ask placement here for the
+        # current allocation and consumer generation and use that for the new
+        # allocation on the dest_node. If the allocation fails due to consumer
+        # generation conflict we have to retry this function only.
+        allocations = reportclient.get_allocations_for_consumer(
+            context, instance.uuid, include_generation=True)
+        source_node_allocations = allocations.get(
+            'allocations', {}).get(source_node.uuid).get('resources')
+        consumer_generation = allocations.get('consumer_generation')
+        retry_on_conflict = True
+    else:
+        # NOTE(gibi) This is the live migrate case. The caller provided the
+        # allocation that needs to be used on the dest_node along with the
+        # expected consumer_generation of the consumer (which is the instance).
+        # If we get consumer generation conflict from placement we have to
+        # raise that back to the caller.
+        retry_on_conflict = False
+
     if source_node_allocations:
         # Generate an allocation request for the destination node.
         alloc_request = {
             'allocations': {
                 dest_node.uuid: {'resources': source_node_allocations}
-            }
+            },
+            'consumer_generation': consumer_generation
         }
         # The claim_resources method will check for existing allocations
         # for the instance and effectively "double up" the allocations for
         # both the source and destination node. That's why when requesting
         # allocations for resources on the destination node before we move,
         # we use the existing resource allocations from the source node.
-        if reportclient.claim_resources(
+        try:
+            success = reportclient.claim_resources(
                 context, instance.uuid, alloc_request,
                 instance.project_id, instance.user_id,
-                allocation_request_version='1.12'):
+                allocation_request_version='1.28')
+        except exception.AllocationUpdateFailed as e:
+            if retry_on_conflict:
+                reason = ('another process changed the consumer %s after '
+                          'consumer state was read from placement during claim'
+                          % instance.uuid)
+                raise Retry(
+                    'claim_resources_on_destination',
+                    reason,
+                    raise_if_no_more_retry=e)
+            else:
+                raise
+
+        if success:
             LOG.debug('Instance allocations successfully created on '
                       'destination node %(dest)s: %(alloc_request)s',
                       {'dest': dest_node.uuid,
@@ -974,6 +1066,14 @@ def claim_resources(ctx, client, spec_obj, instance_uuid, alloc_req,
     # the spec object?
     user_id = ctx.user_id
 
+    # NOTE(gibi): this could raise ConsumerUpdateConflict which means there is
+    # a serious issue with the instance_uuid as a consumer. Every caller of
+    # utils.claim_resources() assumes that instance_uuid will be a new consumer
+    # and reportclient.claim_resources() also assumes this as the provided
+    # alloc_req does not specify any consumer_generation. If the claim fails
+    # due to consumer generation conflict, which in this case means the
+    # consumer is not new, then we let the ConsumerUpdateConflict propagate and
+    # fail the build / migrate as the instance is in inconsistent state.
     return client.claim_resources(ctx, instance_uuid, alloc_req, project_id,
             user_id, allocation_request_version=allocation_request_version)
 
