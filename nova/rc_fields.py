@@ -41,12 +41,13 @@ class ResourceClass(fields.StringField):
     IPV4_ADDRESS = 'IPV4_ADDRESS'
     VGPU = 'VGPU'
     VGPU_DISPLAY_HEAD = 'VGPU_DISPLAY_HEAD'
+    VNVDIMM_GB = 'VNVDIMM_GB'
 
     # The ordering here is relevant. If you must add a value, only
     # append.
     STANDARD = (VCPU, MEMORY_MB, DISK_GB, PCI_DEVICE, SRIOV_NET_VF,
                 NUMA_SOCKET, NUMA_CORE, NUMA_THREAD, NUMA_MEMORY_MB,
-                IPV4_ADDRESS, VGPU, VGPU_DISPLAY_HEAD)
+                IPV4_ADDRESS, VGPU, VGPU_DISPLAY_HEAD, VNVDIMM_GB)
 
     @classmethod
     def normalize_name(cls, rc_name):
