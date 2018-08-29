@@ -388,6 +388,7 @@ class LibvirtDriver(driver.ComputeDriver):
         # beginning to ensure any syntax error will be reported and
         # avoid any re-calculation when computing resources.
         self._reserved_hugepages = hardware.numa_get_reserved_huge_pages()
+        self._nvdimm_rp_mappings = {}
 
     def _get_volume_drivers(self):
         driver_registry = dict()
@@ -3046,6 +3047,15 @@ class LibvirtDriver(driver.ComputeDriver):
     def poll_rebooting_instances(self, timeout, instances):
         pass
 
+    def _allocate_nvdimms(self, allocations):
+        vnvdimm_allocated_gb = 0
+        allocated_nvdimms = []
+        for rp in allocations:
+            if rc_fields.ResourceClass.VNVDIMM_GB in allocations[
+                    rp]['resources']:
+                allocated_nvdimms.append(self._nvdimm_rp_mapping[rp])
+        return allocated_nvdimms
+
     def spawn(self, context, instance, image_meta, injected_files,
               admin_password, allocations, network_info=None,
               block_device_info=None):
@@ -3069,10 +3079,12 @@ class LibvirtDriver(driver.ComputeDriver):
         # Does the guest need to be assigned some vGPU mediated devices ?
         mdevs = self._allocate_mdevs(allocations)
 
+        nvdimms = self._allocate_nvdimms(allocations)
+
         xml = self._get_guest_xml(context, instance, network_info,
                                   disk_info, image_meta,
                                   block_device_info=block_device_info,
-                                  mdevs=mdevs)
+                                  mdevs=mdevs, vnvdimms=nvdimms)
         self._create_domain_and_network(
             context, xml, instance, network_info,
             block_device_info=block_device_info,
@@ -5409,7 +5421,7 @@ class LibvirtDriver(driver.ComputeDriver):
     def _get_guest_xml(self, context, instance, network_info, disk_info,
                        image_meta, rescue=None,
                        block_device_info=None,
-                       mdevs=None):
+                       mdevs=None, vnvdimms=None):
         # NOTE(danms): Stringifying a NetworkInfo will take a lock. Do
         # this ahead of time so that we don't acquire it while also
         # holding the logging lock.
@@ -6410,6 +6422,15 @@ class LibvirtDriver(driver.ComputeDriver):
     def refresh_instance_security_rules(self, instance):
         self.firewall_driver.refresh_instance_security_rules(instance)
 
+    def _get_nvdimm_namespace_size(self, namespace):
+        return 10
+
+    def _get_nvdimm_devices(self):
+        ret = {}
+        for ns in CONF.libvirt.nvdimm_namespaces:
+            ret[ns] = self._get_nvdimm_namespace_size(ns)
+        return ret
+
     def update_provider_tree(self, provider_tree, nodename):
         """Update a ProviderTree object with current resource provider,
         inventory information and CPU traits.
@@ -6486,6 +6507,22 @@ class LibvirtDriver(driver.ComputeDriver):
                 }
 
         provider_tree.update_inventory(nodename, result)
+
+        nvdimm_nss = self._get_nvdimm_devices()
+        if nvdimm_nss:
+            for ns in nvdimm_nss:
+                if not provider_tree.exists(ns):
+                    provider_tree.new_child(ns, nodename)
+                provider_tree.update_inventory(ns, {
+                    'VNVDIMM_GB': {
+                        'total': nvdimm_nss[ns],
+                        'min_unit': nvdimm_nss[ns],
+                        'max_unit': nvdimm_nss[ns],
+                        'step_size': nvdimm_nss[ns],
+                    }
+                })
+                self._nvdimm_rp_mappings[
+                    provider_tree.get_provider_uuids(ns)[0]] = ns
 
         traits = self._get_cpu_traits()
         if traits is not None:
