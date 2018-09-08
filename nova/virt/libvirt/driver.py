@@ -6250,6 +6250,11 @@ class LibvirtDriver(driver.ComputeDriver):
         if topology is None or not topology.cells:
             return
 
+        # If there is no topology, then we won't report nvdimm caps directly.
+        # Since we required the guest must has NUMA, if the host hasn't numa,
+        # the guest won't be able to boot up on the host.
+        nvdimm_cell_map = self._get_nvdimm_caps()
+
         cells = []
         allowed_cpus = hardware.get_vcpu_pin_set()
         online_cpus = self._host.get_online_cpus()
@@ -6326,16 +6331,17 @@ class LibvirtDriver(driver.ComputeDriver):
             network_metadata = objects.NetworkMetadata(
                 physnets=physnet_affinities[cell.id],
                 tunneled=tunnel_affinities[cell.id])
-
+            nvdimms = nvdimm_cell_map[cell.id]
             cell = objects.NUMACell(id=cell.id, cpuset=cpuset,
                                     memory=cell.memory / units.Ki,
                                     cpu_usage=0, memory_usage=0,
                                     siblings=siblings,
                                     pinned_cpus=set([]),
                                     mempages=mempages,
-                                    network_metadata=network_metadata)
+                                    network_metadata=network_metadata,
+                                    nvdimms=nvdimms,
+                                    allocated_nvdimms=[])
             cells.append(cell)
-
         return objects.NUMATopology(cells=cells)
 
     def get_all_volume_usage(self, context, compute_host_bdms):
@@ -6405,6 +6411,19 @@ class LibvirtDriver(driver.ComputeDriver):
 
     def refresh_instance_security_rules(self, instance):
         self.firewall_driver.refresh_instance_security_rules(instance)
+
+    def _get_nvdimm_caps(self):
+        # This is fake function, we should get the nvdimm namespace from the
+        # config file, and discovery the numa and size by the ndctl.
+        # The return dict is keyed by cell id, the value is the mapping of
+        # namespace and size.
+        return {
+            0: {
+                '/tmp/a': 512,
+                '/tmp/b': 512,
+                '/tmp/c': 256
+            },
+        }
 
     def update_provider_tree(self, provider_tree, nodename, allocations=None):
         """Update a ProviderTree object with current resource provider,

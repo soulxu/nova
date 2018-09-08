@@ -15,6 +15,7 @@
 import collections
 import fractions
 import itertools
+import re
 
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
@@ -1102,8 +1103,29 @@ def _numa_fit_instance_cell(host_cell, instance_cell, limit_cell=None,
                       {'usage': cpu_usage, 'limit': cpu_limit})
             return
 
+    if instance_cell.nvdimms:
+        allocated_nvdimms = _numa_cell_supports_nvdimm_request(host_cell,
+            instance_cell)
+        if allocated_nvdimms:
+            instance_cell.allocated_nvdimms = allocated_nvdimms
+        else:
+            return
+
     instance_cell.id = host_cell.id
     return instance_cell
+
+
+def _numa_cell_supports_nvdimm_request(host_cell, instance_cell):
+    # We can get the allocated nvdimm.
+    allocated_nvdimm_ns = []
+    for nvdimm_size in instance_cell.nvdimms:
+        for ns in host_cell.nvdimms:
+            if ns in host_cell.allocated_nvdimms:
+                continue
+            if nvdimm_size == host_cell.nvdimms[ns]:
+                allocated_nvdimm_ns.append(ns)
+                host_cell.allocated_nvdimms.append(ns)
+    return allocated_nvdimm_ns
 
 
 def _get_flavor_image_meta(key, flavor, image_meta, default=None):
@@ -1186,6 +1208,17 @@ def _get_constraint_mappings_from_flavor(flavor, key, func):
         hw_numa_map.append(func(extra_specs[prop]))
 
     return hw_numa_map or None
+
+
+def _get_numa_nvdimm_constraint(flavor):
+    nvdimm_map = collections.defaultdict(list)
+    extra_specs = flavor.get('extra_specs', {})
+    for key in extra_specs:
+        result = re.match('^(hw:numa_nvdimms)\.([0-9])\.([0-9])', key)
+        if result:
+            nvdimm_map[
+                int(result.groups()[1])].append(int(extra_specs[key]))
+    return nvdimm_map
 
 
 def _get_numa_cpu_constraint(flavor, image_meta):
@@ -1342,15 +1375,15 @@ def _get_numa_topology_auto(nodes, flavor):
     return objects.InstanceNUMATopology(cells=cells)
 
 
-def _get_numa_topology_manual(nodes, flavor, cpu_list, mem_list):
+def _get_numa_topology_manual(nodes, flavor, cpu_list, mem_list, nvdimm_map):
     cells = []
     totalmem = 0
 
     availcpus = set(range(flavor.vcpus))
-
     for node in range(nodes):
         mem = mem_list[node]
         cpuset = cpu_list[node]
+        nvdimms = nvdimm_map[node]
 
         for cpu in cpuset:
             if cpu > (flavor.vcpus - 1):
@@ -1364,7 +1397,7 @@ def _get_numa_topology_manual(nodes, flavor, cpu_list, mem_list):
             availcpus.remove(cpu)
 
         cells.append(objects.InstanceNUMACell(
-            id=node, cpuset=cpuset, memory=mem))
+            id=node, cpuset=cpuset, memory=mem, nvdimms=nvdimms))
         totalmem = totalmem + mem
 
     if availcpus:
@@ -1496,15 +1529,18 @@ def numa_get_constraints(flavor, image_meta):
 
         cpu_list = _get_numa_cpu_constraint(flavor, image_meta)
         mem_list = _get_numa_mem_constraint(flavor, image_meta)
+        nvdimm_map = _get_numa_nvdimm_constraint(flavor)
 
         # If one property list is specified both must be
         if ((cpu_list is None and mem_list is not None) or
-            (cpu_list is not None and mem_list is None)):
+            (cpu_list is not None and mem_list is None) or
+            not any([cpu_list is not None, mem_list is not None, nvdimm_map])):
             raise exception.ImageNUMATopologyIncomplete()
 
         # If any node has data set, all nodes must have data set
         if ((cpu_list is not None and len(cpu_list) != nodes) or
-            (mem_list is not None and len(mem_list) != nodes)):
+            (mem_list is not None and len(mem_list) != nodes) or
+            (nvdimm_map and len(nvdimm_map) != nodes)):
             raise exception.ImageNUMATopologyIncomplete()
 
         if cpu_list is None:
@@ -1512,7 +1548,7 @@ def numa_get_constraints(flavor, image_meta):
                 nodes, flavor)
         else:
             numa_topology = _get_numa_topology_manual(
-                nodes, flavor, cpu_list, mem_list)
+                nodes, flavor, cpu_list, mem_list, nvdimm_map)
 
         # We currently support same pagesize for all cells.
         for c in numa_topology.cells:
@@ -1819,7 +1855,9 @@ def numa_usage_from_instances(host, instances, free=False):
         newcell = objects.NUMACell(
             id=hostcell.id, cpuset=hostcell.cpuset, memory=hostcell.memory,
             cpu_usage=0, memory_usage=0, mempages=hostcell.mempages,
-            pinned_cpus=hostcell.pinned_cpus, siblings=hostcell.siblings)
+            pinned_cpus=hostcell.pinned_cpus, siblings=hostcell.siblings,
+            nvdimms=hostcell.nvdimms,
+            allocated_nvdimms=hostcell.allocated_nvdimms)
 
         if 'network_metadata' in hostcell:
             newcell.network_metadata = hostcell.network_metadata
@@ -1868,6 +1906,19 @@ def numa_usage_from_instances(host, instances, free=False):
                             newcell.pin_cpus_with_siblings(pinned_cpus)
                         else:
                             newcell.pin_cpus(pinned_cpus)
+                if instancecell:
+                    if free and hasattr(instancecell, 'allocated_nvdimms'):
+                        # We have to save allocation for free the resource
+                        newcell.allocated_nvdimms = list(
+                            set(newcell.allocated_nvdimms) -
+                            set(instancecell.allocated_nvdimms))
+                        
+                    else:
+                        allocated_nvdimms = _numa_cell_supports_nvdimm_request(
+                            newcell, instancecell)
+                        newcell.allocated_nvdimms = list(
+                            set(newcell.allocated_nvdimms) |
+                            set(allocated_nvdimms))
 
         newcell.cpu_usage = max(0, cpu_usage)
         newcell.memory_usage = max(0, memory_usage)

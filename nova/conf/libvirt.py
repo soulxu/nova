@@ -1242,6 +1242,15 @@ maximum number of retry attempts that can be made to discover the NVMe device.
 """),
 ]
 
+
+libvirt_nvdimm_opts = [
+    cfg.ListOpt('nvdimm_namespaces',
+                item_type=cfg.types.String(),
+                default=[],
+                help='')
+]
+
+
 ALL_OPTS = list(itertools.chain(
     libvirt_general_opts,
     libvirt_imagebackend_opts,
@@ -1261,6 +1270,7 @@ ALL_OPTS = list(itertools.chain(
     libvirt_volume_vzstorage_opts,
     libvirt_virtio_queue_sizes,
     libvirt_volume_nvmeof_opts,
+    libvirt_nvdimm_opts,
 ))
 
 

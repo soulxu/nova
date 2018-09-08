@@ -31,7 +31,8 @@ class InstanceNUMACell(base.NovaObject,
     # Version 1.2: Add cpu_pinning_raw and topology fields
     # Version 1.3: Add cpu_policy and cpu_thread_policy fields
     # Version 1.4: Add cpuset_reserved field
-    VERSION = '1.4'
+    # Version 1.5: Add nvdimm field
+    VERSION = '1.5'
 
     def obj_make_compatible(self, primitive, target_version):
         super(InstanceNUMACell, self).obj_make_compatible(primitive,
@@ -57,6 +58,8 @@ class InstanceNUMACell(base.NovaObject,
             nullable=True),
         # These physical CPUs are reserved for use by the hypervisor
         'cpuset_reserved': obj_fields.SetOfIntegersField(nullable=True),
+        'nvdimms': obj_fields.ListOfIntegersField(nullable=True),
+        'allocated_nvdimms': obj_fields.ListOfStringsField(nullable=True),
     }
 
     cpu_pinning = obj_fields.DictProxyField('cpu_pinning_raw')

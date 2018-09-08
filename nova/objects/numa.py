@@ -44,7 +44,8 @@ class NUMACell(base.NovaObject):
     # Version 1.1: Added pinned_cpus and siblings fields
     # Version 1.2: Added mempages field
     # Version 1.3: Add network_metadata field
-    VERSION = '1.3'
+    # Version 1.4: Add nvdimm related fields
+    VERSION = '1.4'
 
     fields = {
         'id': fields.IntegerField(read_only=True),
@@ -56,6 +57,8 @@ class NUMACell(base.NovaObject):
         'siblings': fields.ListOfSetsOfIntegersField(),
         'mempages': fields.ListOfObjectsField('NUMAPagesTopology'),
         'network_metadata': fields.ObjectField('NetworkMetadata'),
+        'nvdimms': fields.DictOfIntegersField(),
+        'allocated_nvdimms': fields.ListOfStringsField(),
         }
 
     def obj_make_compatible(self, primitive, target_version):

@@ -72,6 +72,7 @@ class NUMATopologyFilter(filters.BaseHostFilter):
         extra_specs = spec_obj.flavor.extra_specs
         image_props = spec_obj.image.properties
         requested_topology = spec_obj.numa_topology
+        print '!!!!!!!!!!!!!requested topo', requested_topology
         host_topology, _fmt = hardware.host_topology_and_format_from_host(
                 host_state)
         pci_requests = spec_obj.pci_requests
