@@ -18010,6 +18010,44 @@ class TestUpdateProviderTree(test.NoDBTestCase):
         self.assertEqual(inventory,
                          (self.pt.data(self.cn_rp.uuid)).inventory)
 
+    def test_update_provider_tree_with_pmem(self):
+        self.driver._pmem_namespaces = [
+            libvirt_driver.PMEMNamespace(
+                name='ns_0',
+                devpath='',
+                size=10,
+            ),
+            libvirt_driver.PMEMNamespace(
+                name='ns_1',
+                devpath='',
+                size=20,
+            ),
+            libvirt_driver.PMEMNamespace(
+                name='ns_2',
+                devpath='',
+                size=30,
+            ),
+        ]
+
+        self._test_update_provider_tree()
+        ns_names = []
+        for ns in self.driver._pmem_namespaces:
+            p_data = self.pt.data(ns.name)
+            self.assertEqual(self.cn_rp.uuid, p_data.parent_uuid)
+            ns_names.append(p_data.name)
+            expected_inventory = {rc_fields.ResourceClass.VPMEM_GB: {
+                'total': ns.size,
+                'min_unit': ns.size,
+                'max_unit': ns.size,
+                'step_size': ns.size
+            }}
+            self.assertEqual(expected_inventory, p_data.inventory)
+
+        expected_names = [ns.name for ns in self.driver._pmem_namespaces]
+        ns_names.sort()
+        expected_names.sort()
+        self.assertEqual(expected_names, ns_names)
+
     @mock.patch('nova.virt.libvirt.driver.LibvirtDriver._get_vgpu_total',
                 return_value=0)
     @mock.patch('nova.virt.libvirt.driver.LibvirtDriver._get_local_gb_info',

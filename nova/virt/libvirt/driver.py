@@ -6520,6 +6520,21 @@ class LibvirtDriver(driver.ComputeDriver):
                 'step_size': 1,
                 }
 
+        if self._pmem_namespaces:
+            for namespace in self._pmem_namespaces:
+                # The name of pmem RP will be the name of namespace.
+                if not provider_tree.exists(namespace.name):
+                    provider_tree.new_child(namespace.name, nodename)
+                # Each pmem namespace will be the minimal allocatable unit.
+                provider_tree.update_inventory(namespace.name, {
+                    'VPMEM_GB': {
+                        'total': namespace.size,
+                        'min_unit': namespace.size,
+                        'max_unit': namespace.size,
+                        'step_size': namespace.size
+                    }
+                })
+
         provider_tree.update_inventory(nodename, result)
 
         traits = self._get_cpu_traits()
