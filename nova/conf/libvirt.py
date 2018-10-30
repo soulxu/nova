@@ -1244,6 +1244,34 @@ maximum number of retry attempts that can be made to discover the NVMe device.
 """),
 ]
 
+
+libvirt_pmem_opts = [
+    cfg.ListOpt('pmem_region_names',
+                item_type=cfg.types.String(),
+                default=[],
+                help="""
+The PMEM region can be used for guest
+
+Nova will use those regions for the guest. Before assign to VM, Nova will
+separate the region into mulitple namespace. Namespace will be minimal unit
+assign to the guest.
+"""),
+    cfg.ListOpt('pmem_namespace_sizes',
+                item_type=cfg.types.Integer(),
+                default=[],
+                help="""
+The size of each pmem namespace.
+
+Nova will seperate the PMEM region into multiple namespaces based this size
+"""),
+   cfg.StrOpt('pmem_namespace_prefix',
+                 default='pmem_namespace_',
+                 help="""
+This is the default prefix for each pmem namespace name.
+"""),
+]
+
+
 ALL_OPTS = list(itertools.chain(
     libvirt_general_opts,
     libvirt_imagebackend_opts,
@@ -1263,6 +1291,7 @@ ALL_OPTS = list(itertools.chain(
     libvirt_volume_vzstorage_opts,
     libvirt_virtio_queue_sizes,
     libvirt_volume_nvmeof_opts,
+    libvirt_pmem_opts,
 ))
 
 

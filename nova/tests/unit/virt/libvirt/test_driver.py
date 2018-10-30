@@ -22279,3 +22279,51 @@ class TestLibvirtMultiattach(test.NoDBTestCase):
     #     calls = [mock.call(lv_ver=libvirt_driver.MIN_LIBVIRT_MULTIATTACH),
     #              mock.call(hv_ver=(2, 10, 0))]
     #     has_min_version.assert_has_calls(calls)
+
+
+class LibvirtPMEMTests(test.NoDBTestCase):
+
+    def setUp(self):
+        super(LibvirtPMEMTests, self).setUp()
+        self.useFixture(fakelibvirt.FakeLibvirtFixture())
+
+    def test_pmem_configure_with_empty_region(self):
+        drvr = libvirt_driver.LibvirtDriver(fake.FakeVirtAPI(), True)
+        self.assertEqual([], drvr._pmem_namespaces)
+
+    def test_pmem_configure_with_empty_namespace_sizes(self):
+        CONF.set_override("pmem_region_names", ["region0", "region1"],
+            group='libvirt')
+        drvr = libvirt_driver.LibvirtDriver(fake.FakeVirtAPI(), True)
+        self.assertEqual([], drvr._pmem_namespaces)
+
+    def test_pmem_configure(self):
+        CONF.set_override("pmem_region_names", ["region0", "region1"],
+            group='libvirt')
+        CONF.set_override("pmem_namespace_sizes", [10, 20, 30],
+            group='libvirt')
+        drvr = libvirt_driver.LibvirtDriver(fake.FakeVirtAPI(), True)
+        expected_ns = [
+            libvirt_driver.PMEMNamespace(
+                name='pmem_namespace_0',
+                devpath='',
+                size=10
+            ),
+            libvirt_driver.PMEMNamespace(
+                name='pmem_namespace_1',
+                devpath='',
+                size=20
+            ),
+            libvirt_driver.PMEMNamespace(
+                name='pmem_namespace_2',
+                devpath='',
+                size=30
+            ),
+        ]
+        self.assertEqual(expected_ns, drvr._pmem_namespaces)
+
+    def test_pmem_configure_with_region_size_not_enough(self):
+        pass
+
+    def test_pmem_configure_with_existed_ns_not_match_conf(self):
+        pass

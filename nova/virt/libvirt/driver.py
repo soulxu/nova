@@ -291,6 +291,10 @@ MIN_QEMU_FILE_BACKED_DISCARD_VERSION = (2, 10, 0)
 VGPU_RESOURCE_SEMAPHORE = "vgpu_resources"
 
 
+PMEMNamespace = collections.namedtuple('PMEMNamespace',
+                                       ['name', 'devpath', 'size'])
+
+
 class LibvirtDriver(driver.ComputeDriver):
     capabilities = {
         "has_imagecache": True,
@@ -383,6 +387,25 @@ class LibvirtDriver(driver.ComputeDriver):
         # beginning to ensure any syntax error will be reported and
         # avoid any re-calculation when computing resources.
         self._reserved_hugepages = hardware.numa_get_reserved_huge_pages()
+
+        # Setup the pmem region based on the configuration.
+        self._pmem_namespaces = []
+        self._configure_pmem_region()
+
+    def _configure_pmem_region(self):
+        if not CONF.libvirt.pmem_region_names:
+            return
+        # TODO(alex): create namespaces. raise exception if the existed
+        # namespace doesn't match the CONF.libvirt.pmem_namespace_size
+        for ns_index in range(len(CONF.libvirt.pmem_namespace_sizes)):
+            # The name of namespace will be the namespace prefex + index.
+            self._pmem_namespaces.append(
+                PMEMNamespace(
+                    name=(CONF.libvirt.pmem_namespace_prefix +
+                            six.text_type(ns_index)),
+                    devpath='',
+                    size=CONF.libvirt.pmem_namespace_sizes[ns_index])
+            )
 
     def _get_volume_drivers(self):
         driver_registry = dict()
