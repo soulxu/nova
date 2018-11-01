@@ -22,6 +22,18 @@ from nova.objects import fields as obj_fields
 from nova.virt import hardware
 
 
+@base.NovaObjectRegistry.register
+class VirtualPMEM(base.NovaObject,
+                    base.NovaObjectDictCompat):
+    # Version 1.0: Initial version
+    VERSION = "1.0"
+
+    fields = {
+        'assigned_namespace': obj_fields.StringField(nullable=True),
+        'size': obj_fields.IntegerField(),
+    }
+
+
 # TODO(berrange): Remove NovaObjectDictCompat
 @base.NovaObjectRegistry.register
 class InstanceNUMACell(base.NovaObject,
@@ -31,7 +43,8 @@ class InstanceNUMACell(base.NovaObject,
     # Version 1.2: Add cpu_pinning_raw and topology fields
     # Version 1.3: Add cpu_policy and cpu_thread_policy fields
     # Version 1.4: Add cpuset_reserved field
-    VERSION = '1.4'
+    # Version 1.5: Add virtual_pmems field
+    VERSION = '1.5'
 
     def obj_make_compatible(self, primitive, target_version):
         super(InstanceNUMACell, self).obj_make_compatible(primitive,
@@ -43,6 +56,9 @@ class InstanceNUMACell(base.NovaObject,
         if target_version < (1, 3):
             primitive.pop('cpu_policy', None)
             primitive.pop('cpu_thread_policy', None)
+
+        if target_version < (1, 5):
+            primitive.pop('virtual_pmems', None)
 
     fields = {
         'id': obj_fields.IntegerField(),
@@ -57,6 +73,8 @@ class InstanceNUMACell(base.NovaObject,
             nullable=True),
         # These physical CPUs are reserved for use by the hypervisor
         'cpuset_reserved': obj_fields.SetOfIntegersField(nullable=True),
+        'virtual_pmems': obj_fields.ListOfObjectsField('VirtualPMEM',
+            nullable=True),
     }
 
     cpu_pinning = obj_fields.DictProxyField('cpu_pinning_raw')

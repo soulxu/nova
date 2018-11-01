@@ -1926,9 +1926,18 @@ def instance_topology_from_instance(instance):
             # called in the conductor.
             #
             # Remove when request_spec is a proper object itself!
-            dict_cells = instance_numa_topology.get('cells')
-            if dict_cells:
-                cells = [objects.InstanceNUMACell(
+            dict_cells = instance_numa_topology.get('cells', [])
+            cells = []
+            for cell in dict_cells:
+                virtual_pmems = None
+                if cell.get('virtual_pmems'):
+                    virtual_pmems = [
+                        objects.VirtualPMEM(
+                            size=pmem.get('size'),
+                            assigned_namespace=pmem.get('assigned_namespace')
+                        ) for pmem in cell.get('virtual_pmems', None)
+                    ]
+                cells.append(objects.InstanceNUMACell(
                     id=cell['id'],
                     cpuset=set(cell['cpuset']),
                     memory=cell['memory'],
@@ -1937,8 +1946,8 @@ def instance_topology_from_instance(instance):
                     cpu_pinning=cell.get('cpu_pinning_raw'),
                     cpu_policy=cell.get('cpu_policy'),
                     cpu_thread_policy=cell.get('cpu_thread_policy'),
-                    cpuset_reserved=cell.get('cpuset_reserved'))
-                         for cell in dict_cells]
+                    cpuset_reserved=cell.get('cpuset_reserved'),
+                    virtual_pmems=virtual_pmems))
                 emulator_threads_policy = instance_numa_topology.get(
                     'emulator_threads_policy')
                 instance_numa_topology = objects.InstanceNUMATopology(

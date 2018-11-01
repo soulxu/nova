@@ -597,9 +597,14 @@ class _TestInstanceObject(object):
     @mock.patch.object(instance.Instance, '_from_db_object')
     def test_save_updates_numa_topology(self, mock_fdo, mock_update,
             mock_extra_update):
+        fake_virtual_pmems = [
+            objects.VirtualPMEM(assigned_namespace='fake0', size=1),
+            objects.VirtualPMEM(assigned_namespace='fake1', size=1)]
         fake_obj_numa_topology = objects.InstanceNUMATopology(cells=[
-            objects.InstanceNUMACell(id=0, cpuset=set([0]), memory=128),
-            objects.InstanceNUMACell(id=1, cpuset=set([1]), memory=128)])
+            objects.InstanceNUMACell(id=0, cpuset=set([0]), memory=128,
+                virtual_pmems=fake_virtual_pmems),
+            objects.InstanceNUMACell(id=1, cpuset=set([1]), memory=128,
+                virtual_pmems=fake_virtual_pmems)])
         fake_obj_numa_topology.instance_uuid = uuids.instance
         jsonified = fake_obj_numa_topology._to_json()
 

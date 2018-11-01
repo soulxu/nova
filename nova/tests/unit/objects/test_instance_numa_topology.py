@@ -204,6 +204,19 @@ class _TestInstanceNUMATopology(object):
                                                    version_manifest=versions))
         self.assertNotIn('cpuset_reserved', primitive)
 
+    def test_obj_make_compatible_numa_cell_pre_1_5(self):
+        topo_obj = objects.InstanceNUMACell(
+            virtual_pmems=[objects.VirtualPMEM(assigned_namespace='fake',
+                                               size=1)])
+        versions = ovo_base.obj_tree_get_versions('InstanceNUMACell')
+        data = lambda x: x['nova_object.data']
+        primitive = data(topo_obj.obj_to_primitive(target_version='1.5',
+                                                   version_manifest=versions))
+        self.assertIn('virtual_pmems', primitive)
+        primitive = data(topo_obj.obj_to_primitive(target_version='1.4',
+                                                   version_manifest=versions))
+        self.assertNotIn('virtual_pmems', primitive)
+
 
 class TestInstanceNUMATopology(test_objects._LocalTest,
                                _TestInstanceNUMATopology):
