@@ -27,6 +27,7 @@ terminating it.
 
 import base64
 import binascii
+import collections
 # If py2, concurrent.futures comes from the futures library otherwise it
 # comes from the py3 standard library.
 from concurrent import futures
@@ -61,6 +62,7 @@ from nova import compute
 from nova.compute import build_results
 from nova.compute import claims
 from nova.compute import power_state
+from nova.compute import provider_tree
 from nova.compute import resource_tracker
 from nova.compute import rpcapi as compute_rpcapi
 from nova.compute import task_states
@@ -87,6 +89,7 @@ from nova.objects import fields
 from nova.objects import instance as obj_instance
 from nova.objects import migrate_data as migrate_data_obj
 from nova.pci import whitelist
+from nova import rc_fields
 from nova import rpc
 from nova import safe_utils
 from nova.scheduler import client as scheduler_client
@@ -2057,6 +2060,36 @@ class ComputeManager(manager.Manager):
             hints = filter_properties.get('scheduler_hints') or {}
         return hints
 
+    def _update_pmem_allocation_to_numa_topo(self, instance, allocations,
+            provider_tree):
+
+        if 'numa_topology' not in instance or not instance.numa_topology:
+            return
+
+        RC_VPMEM = rc_fields.ResourceClass.VPMEM_GB
+        allocated_rp = collections.defaultdict(list)
+        for rp_uuid in allocations:
+            res = allocations[rp_uuid]['resources']
+            if (RC_VPMEM in res and res[RC_VPMEM] > 0):
+                try:
+                    allocated_rp[res[RC_VPMEM]].append(
+                        provider_tree.data(rp_uuid).name)
+                except ValueError as e:
+                    # This is rare case when the instance is deleted, and the
+                    # RP is removed also.
+                    raise exception.RescheduledException(
+                        instance_uuid=instance.uuid, reason=six.text_type(e))
+
+        for cell in instance.numa_topology.cells:
+            for pmem in cell.virtual_pmems:
+                try:
+                    assigned_namespace = allocated_rp[pmem.size].pop()
+                except IndexError:
+                    raise exception.RescheduledException(
+                        instance_uuid=instance.uuid, reason=_(
+                            "Can't find allocation for the request PMEM."))
+                pmem.assigned_namespace = assigned_namespace
+
     def _build_and_run_instance(self, context, instance, image, injected_files,
             admin_password, requested_networks, security_groups,
             block_device_mapping, node, limits, filter_properties,
@@ -2092,6 +2125,15 @@ class ComputeManager(manager.Manager):
                 with self._build_resources(context, instance,
                         requested_networks, security_groups, image_meta,
                         block_device_mapping) as resources:
+
+                    # TODO(alex_xu): Not sure this is right place to do this.
+                    cn = rt.compute_nodes[node]
+                    priv_tree = (
+                        self.reportclient.get_provider_tree_and_ensure_root(
+                            context, cn.uuid, name=node))
+                    self._update_pmem_allocation_to_numa_topo(
+                        instance, resources['allocations'], priv_tree)
+
                     instance.vm_state = vm_states.BUILDING
                     instance.task_state = task_states.SPAWNING
                     # NOTE(JoshNang) This also saves the changes to the

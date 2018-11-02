@@ -37,6 +37,7 @@ import nova
 from nova.compute import build_results
 from nova.compute import manager
 from nova.compute import power_state
+from nova.compute import provider_tree
 from nova.compute import resource_tracker
 from nova.compute import task_states
 from nova.compute import utils as compute_utils
@@ -55,6 +56,7 @@ from nova.objects import fields
 from nova.objects import instance as instance_obj
 from nova.objects import migrate_data as migrate_data_obj
 from nova.objects import network_request as net_req_obj
+from nova import rc_fields
 from nova import test
 from nova.tests import fixtures
 from nova.tests.unit.api.openstack import fakes
@@ -4943,6 +4945,55 @@ class ComputeManagerUnitTestCase(test.NoDBTestCase):
                 self.compute._notify_volume_usage_detach(
                     self.context, fake_instance, fake_bdm)
         block_stats.assert_called_once_with(fake_instance, 'vda')
+
+    def test_update_pmem_allocations(self):
+        fake_instance = objects.Instance()
+        fake_instance.numa_topology = objects.InstanceNUMATopology(
+            cells=[
+                objects.InstanceNUMACell(virtual_pmems=[
+                    objects.VirtualPMEM(size=1),
+                    objects.VirtualPMEM(size=2),
+                    objects.VirtualPMEM(size=3),
+                    objects.VirtualPMEM(size=4)]
+                )
+            ]
+        )
+
+        pmem_size_rp_mappings = {
+            uuids.pmem_rp_uuid1: ('pmem_ns_1', 1),
+            uuids.pmem_rp_uuid2: ('pmem_ns_2', 2),
+            uuids.pmem_rp_uuid3: ('pmem_ns_3', 3),
+            uuids.pmem_rp_uuid4: ('pmem_ns_4', 4),
+        }
+
+        fake_allocations = {}
+        for pmem_rp_uuid in pmem_size_rp_mappings:
+            fake_allocations[pmem_rp_uuid] = {
+                'resources': {
+                    rc_fields.ResourceClass.VPMEM_GB: pmem_size_rp_mappings[
+                        pmem_rp_uuid][1]
+                }
+            }
+
+        pt = provider_tree.ProviderTree()
+        pt.new_root('fake_node', uuids.compute_node_uuid, generation=0)
+        for pmem_rp_uuid in pmem_size_rp_mappings:
+            pt.new_child(pmem_size_rp_mappings[pmem_rp_uuid][0],
+                         uuids.compute_node_uuid,
+                         uuid=pmem_rp_uuid)
+
+        self.compute._update_pmem_allocation_to_numa_topo(
+            fake_instance, fake_allocations, pt)
+
+        ret = []
+        for cell in fake_instance.numa_topology.cells:
+            for pmem in cell.virtual_pmems:
+                ret.append((pmem.assigned_namespace, pmem.size))
+
+        ret.sort()
+        expected_ret = pmem_size_rp_mappings.values()
+        expected_ret.sort()
+        self.assertEqual(expected_ret, ret)
 
 
 class ComputeManagerBuildInstanceTestCase(test.NoDBTestCase):
