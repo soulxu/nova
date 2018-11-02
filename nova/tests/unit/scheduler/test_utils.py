@@ -696,6 +696,81 @@ class TestUtils(test.NoDBTestCase):
             expected, utils.ResourceRequest.from_image_props(image_meta_props,
                                                              req=existing_req))
 
+    def test_resource_request_from_instance_numa_topology(self):
+        instance_topo = objects.InstanceNUMATopology(
+            cells=[
+                objects.InstanceNUMACell(
+                    virtual_pmems=[
+                        objects.VirtualPMEM(
+                            size='1'
+                        ),
+                        objects.VirtualPMEM(
+                            size='2'
+                        )
+                    ]
+                ),
+                objects.InstanceNUMACell(
+                    virtual_pmems=[
+                        objects.VirtualPMEM(
+                            size='3'
+                        ),
+                        objects.VirtualPMEM(
+                            size='4'
+                        )
+                    ]
+                )
+            ]
+        )
+
+        existing_req = utils.ResourceRequest()
+        existing_req._rg_by_id[None] = plib.RequestGroup(
+            use_same_provider=False,
+            resources={
+                'VCPU': 2,
+                'MEMORY_MB': 2048,
+            }
+        )
+        existing_req._rg_by_id[1] = plib.RequestGroup(
+            use_same_provider=True,
+            resources={
+                'DISK_GB': 1000
+            }
+        )
+
+        expected_req = utils.ResourceRequest()
+        expected_req._rg_by_id[None] = existing_req._rg_by_id[None]
+        expected_req._rg_by_id[1] = existing_req._rg_by_id[1]
+        expected_req._rg_by_id[2] = plib.RequestGroup(
+            use_same_provider=True,
+            resources={
+                'VPMEM_GB': 1,
+            }
+        )
+        expected_req._rg_by_id[3] = plib.RequestGroup(
+            use_same_provider=True,
+            resources={
+                'VPMEM_GB': 2,
+            }
+        )
+        expected_req._rg_by_id[4] = plib.RequestGroup(
+            use_same_provider=True,
+            resources={
+                'VPMEM_GB': 3,
+            }
+        )
+        expected_req._rg_by_id[5] = plib.RequestGroup(
+            use_same_provider=True,
+            resources={
+                'VPMEM_GB': 4,
+            }
+        )
+
+        self.assertResourceRequestsEqual(
+            expected_req, utils.ResourceRequest.from_instance_numa_topology(
+            instance_topo,
+            req=existing_req
+        ))
+
     def test_merge_resources(self):
         resources = {
             'VCPU': 1, 'MEMORY_MB': 1024,

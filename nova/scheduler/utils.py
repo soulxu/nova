@@ -194,6 +194,29 @@ class ResourceRequest(object):
 
         return ret
 
+    @classmethod
+    def from_instance_numa_topology(cls, instance_numa_topo, req=None):
+        if req is not None:
+            req = req
+        else:
+            req = cls()
+
+        # TODO(alex_xu): we should make _add_resource method adding resource to
+        # an new group id automactially.
+        max_group_id = max(req._rg_by_id.keys())
+        next_group_id = 1 if max_group_id is None else max_group_id + 1
+        # We just translate virtual pmem request to flat resource request.
+        # Since we don't support NUMA affinity for the pmem device yet.
+        for cell in instance_numa_topo.cells:
+            if 'virtual_pmems' not in cell:
+                continue
+            for pmem in cell.virtual_pmems:
+                req._add_resource(
+                    next_group_id, fields.ResourceClass.VPMEM_GB,
+                    pmem.size)
+                next_group_id += 1
+        return req
+
     def resource_groups(self):
         for rg in self._rg_by_id.values():
             yield rg.resources
@@ -459,6 +482,10 @@ def resources_from_request_spec(spec_obj):
             grp = res_req.get_request_group(None)
             grp.member_of = [tuple(ored.split(','))
                              for ored in destination.aggregates]
+
+    if 'numa_topology' in spec_obj and spec_obj.numa_toplogy:
+        res_req = ResourceRquest.from_instance_numa_topology(
+            spec.numa_topology, res_req)
 
     # Don't limit allocation candidates when using force_hosts or force_nodes.
     if 'force_hosts' in spec_obj and spec_obj.force_hosts:
