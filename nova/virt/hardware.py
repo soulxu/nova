@@ -15,6 +15,7 @@
 import collections
 import fractions
 import itertools
+import re
 
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
@@ -1176,6 +1177,21 @@ def _get_numa_pagesize_constraint(flavor, image_meta):
     return pagesize
 
 
+def _get_numa_pmem_size_constrait(flavor, image_meta):
+    flavor_pmem_size, image_pmem_size = _get_flavor_image_meta(
+        'numa_pmem_size', flavor, image_meta)
+
+    if flavor_pmem_size and image_pmem_size:
+        raise exception.ImageNUMATopologyForbidden(name='hw_numa_pmem_size')
+
+    pmem_size = flavor_pmem_size or image_pmem_size
+    if pmem_size is not None and (not strutils.is_int_like(pmem_size) or
+            int(pmem_size) < 1):
+        raise exception.InvalidNUMANodesNumber(nodes=nodes)
+
+    return int(pmem_size) if pmem_size else pmem_size
+
+
 def _get_constraint_mappings_from_flavor(flavor, key, func):
     hw_numa_map = []
     extra_specs = flavor.get('extra_specs', {})
@@ -1246,6 +1262,34 @@ def _get_numa_mem_constraint(flavor, image_meta):
             name='hw_numa_mem')
 
     return flavor_mem_list
+
+
+def _get_numa_pmems_constrait_from_metadata(metadata, key_prefix):
+    pmem_list = collections.defaultdict(list)
+
+    for key in metadata:
+        result = re.match('^(%s)\.([0-9])\.([0-9])' % key_prefix, key)
+        if result:
+            pmem_list[result.groups()[1]].append(metadata[key])
+    if pmem_list:
+        return [pmem_list[i] for i in sorted(pmem_list.keys())]
+    else:
+        return None
+
+
+def _get_numa_pmems_constrait(flavor, image_meta):
+    flavor_pmem_list = _get_numa_pmems_constrait_from_metadata(
+        flavor.get('extra_specs', {}), 'hw:numa_pmems')
+    image_pmem_list = image_meta.properties.get('hw_numa_pmems', None)
+
+    if flavor_pmem_list is None:
+        return image_pmem_list
+
+    if image_pmem_list is not None:
+        raise exception.ImageNUMATopologyForbidden(
+            name='hw_numa_pmems')
+
+    return flavor_pmem_list
 
 
 def _get_numa_node_count_constraint(flavor, image_meta):
@@ -1324,7 +1368,7 @@ def _get_cpu_thread_policy_constraint(flavor, image_meta):
     return policy
 
 
-def _get_numa_topology_auto(nodes, flavor):
+def _get_numa_topology_auto(nodes, pmem_size, flavor):
     if ((flavor.vcpus % nodes) > 0 or
         (flavor.memory_mb % nodes) > 0):
         raise exception.ImageNUMATopologyAsymmetric()
@@ -1336,13 +1380,19 @@ def _get_numa_topology_auto(nodes, flavor):
         start = node * ncpus
         cpuset = set(range(start, start + ncpus))
 
+        virtual_pmems = None
+        if pmem_size:
+            virtual_pmems = [objects.VirtualPMEM(size=int(pmem_size / nodes),
+                assigned_namespace=None)]
+
         cells.append(objects.InstanceNUMACell(
-            id=node, cpuset=cpuset, memory=mem))
+            id=node, cpuset=cpuset, memory=mem,
+            virtual_pmems=virtual_pmems))
 
     return objects.InstanceNUMATopology(cells=cells)
 
 
-def _get_numa_topology_manual(nodes, flavor, cpu_list, mem_list):
+def _get_numa_topology_manual(nodes, flavor, cpu_list, mem_list, pmem_list):
     cells = []
     totalmem = 0
 
@@ -1351,6 +1401,7 @@ def _get_numa_topology_manual(nodes, flavor, cpu_list, mem_list):
     for node in range(nodes):
         mem = mem_list[node]
         cpuset = cpu_list[node]
+        pmems = [] if not pmem_list else pmem_list[node]
 
         for cpu in cpuset:
             if cpu > (flavor.vcpus - 1):
@@ -1363,8 +1414,14 @@ def _get_numa_topology_manual(nodes, flavor, cpu_list, mem_list):
 
             availcpus.remove(cpu)
 
+        virtual_pmems = []
+        for pmem in pmems:
+            virtual_pmems.append(
+                objects.VirtualPMEM(size=pmem, assigned_namespace=None))
+
         cells.append(objects.InstanceNUMACell(
-            id=node, cpuset=cpuset, memory=mem))
+            id=node, cpuset=cpuset, memory=mem,
+            virtual_pmems=virtual_pmems or None))
         totalmem = totalmem + mem
 
     if availcpus:
@@ -1490,29 +1547,32 @@ def numa_get_constraints(flavor, image_meta):
 
     nodes = _get_numa_node_count_constraint(flavor, image_meta)
     pagesize = _get_numa_pagesize_constraint(flavor, image_meta)
+    pmemsize = _get_numa_pmem_size_constrait(flavor, image_meta)
 
-    if nodes or pagesize:
+    if nodes or pagesize or pmemsize:
         nodes = nodes or 1
 
         cpu_list = _get_numa_cpu_constraint(flavor, image_meta)
         mem_list = _get_numa_mem_constraint(flavor, image_meta)
+        pmem_list = _get_numa_pmems_constrait(flavor, image_meta)
 
-        # If one property list is specified both must be
+        # If one property list is specified all must be
         if ((cpu_list is None and mem_list is not None) or
             (cpu_list is not None and mem_list is None)):
             raise exception.ImageNUMATopologyIncomplete()
 
         # If any node has data set, all nodes must have data set
         if ((cpu_list is not None and len(cpu_list) != nodes) or
-            (mem_list is not None and len(mem_list) != nodes)):
+            (mem_list is not None and len(mem_list) != nodes) or
+            (pmem_list is not None and len(pmem_list) != nodes)):
             raise exception.ImageNUMATopologyIncomplete()
 
         if cpu_list is None:
             numa_topology = _get_numa_topology_auto(
-                nodes, flavor)
+                nodes, pmemsize, flavor)
         else:
             numa_topology = _get_numa_topology_manual(
-                nodes, flavor, cpu_list, mem_list)
+                nodes, flavor, cpu_list, mem_list, pmem_list)
 
         # We currently support same pagesize for all cells.
         for c in numa_topology.cells:
@@ -1550,7 +1610,8 @@ def numa_get_constraints(flavor, image_meta):
             cpuset=set(range(flavor.vcpus)),
             memory=flavor.memory_mb,
             cpu_policy=cpu_policy,
-            cpu_thread_policy=cpu_thread_policy)
+            cpu_thread_policy=cpu_thread_policy,
+            virtual_pmems=None)
         numa_topology = objects.InstanceNUMATopology(cells=[single_cell])
 
     if emu_threads_policy:

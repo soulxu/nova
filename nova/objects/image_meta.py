@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import collections
 import copy
+import re
 
 from oslo_utils import versionutils
 import six
@@ -170,12 +172,15 @@ class ImageMetaProps(base.NovaObject):
     # Version 1.18: Pull signature properties from cursive library
     # Version 1.19: Added 'img_hide_hypervisor_id' type field
     # Version 1.20: Added 'traits_required' list field
-    VERSION = '1.20'
+    # Version 1.21: Added 'hw_numa_pmem_size' and 'hw_numa_pmems' fields
+    VERSION = '1.21'
 
     def obj_make_compatible(self, primitive, target_version):
         super(ImageMetaProps, self).obj_make_compatible(primitive,
                                                         target_version)
         target_version = versionutils.convert_version_to_tuple(target_version)
+        if target_version < (1, 21):
+            primitive.pop('hw_numa_pmems', None)
         if target_version < (1, 20):
             primitive.pop('traits_required', None)
         if target_version < (1, 19):
@@ -303,6 +308,9 @@ class ImageMetaProps(base.NovaObject):
         # Number of guest NUMA nodes
         'hw_numa_nodes': fields.IntegerField(),
 
+        # Size of guest PMEM
+        'hw_numa_pmem_size': fields.IntegerField(),
+
         # Each list entry corresponds to a guest NUMA node and the
         # set members indicate CPUs for that node
         'hw_numa_cpus': fields.ListOfSetsOfIntegersField(),
@@ -310,6 +318,10 @@ class ImageMetaProps(base.NovaObject):
         # Each list entry corresponds to a guest NUMA node and the
         # list value indicates the memory size of that node.
         'hw_numa_mem': fields.ListOfIntegersField(),
+
+        # Each list entry corrsponds to a guesat NUMA node and the list value
+        # indicates the pmem size for each slot.
+        'hw_numa_pmems': fields.ListOfListOfIntegersField(),
 
         # Generic property to specify the pointer model type.
         'hw_pointer_model': fields.PointerModelField(),
@@ -546,6 +558,17 @@ class ImageMetaProps(base.NovaObject):
         if hw_numa_cpus_set:
             self.hw_numa_cpus = hw_numa_cpus
 
+    def _set_numa_pmems(self, image_props):
+        pmems = collections.defaultdict(list)
+
+        for key in image_props:
+            result = re.match('^(hw_numa_pmems)\.([0-9])\.([0-9])', key)
+            if result:
+                pmems[result.groups()[1]].append(int(image_props[key]))
+
+        if pmems:
+            self.hw_numa_pmems = pmems.values()
+
     def _set_attr_from_current_names(self, image_props):
         for key in self.fields:
             # The two NUMA fields need special handling to
@@ -554,6 +577,8 @@ class ImageMetaProps(base.NovaObject):
                 self._set_numa_mem(image_props)
             elif key == "hw_numa_cpus":
                 self._set_numa_cpus(image_props)
+            elif key == "hw_numa_pmems":
+                self._set_numa_pmems(image_props)
             else:
                 # traits_required will be populated by
                 # _set_attr_from_trait_names

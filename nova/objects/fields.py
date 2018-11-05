@@ -94,6 +94,10 @@ class SetOfStringsField(AutoTypedField):
     AUTO_TYPE = Set(fields.String())
 
 
+class ListOfListOfIntegersField(AutoTypedField):
+    AUTO_TYPE = List(List(IntegerField()))
+
+
 class BaseNovaEnum(Enum):
     def __init__(self, **kwargs):
         super(BaseNovaEnum, self).__init__(valid_values=self.__class__.ALL)
